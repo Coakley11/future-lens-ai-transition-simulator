@@ -1,8 +1,7 @@
 """
 Future Lens: AI Transition Simulator
 
-Explore how work, learning, creativity, sports, investing, and life evolved
-from 1980 to today — and how AI may reshape them through 2050.
+Domain → Area → Skill → evolution timeline → drivers → future advice → simulation.
 
 Run: streamlit run streamlit_app.py
 """
@@ -11,18 +10,13 @@ from __future__ import annotations
 
 import streamlit as st
 
-from content import (
-    CAREER_EVOLUTION,
-    DOMAIN_CATEGORIES,
-    DOMAINS,
-    IMPACT_PROFILES,
-    TIMELINE,
-    TIMELINE_YEARS,
-    DomainInfo,
-    get_future_workflow,
+from taxonomy import (
+    AREAS,
+    BROAD_DOMAINS,
+    DOMAIN_ICONS,
+    build_skill_profile,
+    get_skills_for_area,
 )
-
-# ── Page config ───────────────────────────────────────────────────────────────
 
 st.set_page_config(
     page_title="Future Lens · AI Transition Simulator",
@@ -31,100 +25,110 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── Styles ────────────────────────────────────────────────────────────────────
-
 st.markdown(
     """
     <style>
-    .stApp {
-        background: linear-gradient(160deg, #0f0a1e 0%, #1a1033 35%, #0c1929 100%);
-    }
-    .block-container { padding-top: 1.2rem; max-width: 1180px; }
+    .stApp { background: linear-gradient(160deg, #0f0a1e 0%, #1a1033 35%, #0c1929 100%); }
+    .block-container { padding-top: 1rem; max-width: 1200px; }
     .fl-hero {
         background: linear-gradient(135deg, #7c3aed 0%, #db2777 50%, #f59e0b 100%);
-        border-radius: 24px;
-        padding: 2rem 2.2rem;
-        color: white;
-        margin-bottom: 1.25rem;
-        box-shadow: 0 20px 50px rgba(124, 58, 237, 0.35);
+        border-radius: 20px; padding: 1.75rem 2rem; color: white; margin-bottom: 1.25rem;
     }
-    .fl-hero h1 { margin: 0 0 0.35rem; font-size: 2.3rem; font-weight: 800; }
-    .fl-hero p { margin: 0; opacity: 0.95; font-size: 1.05rem; line-height: 1.55; max-width: 780px; }
+    .fl-hero h1 { margin: 0; font-size: 2rem; font-weight: 800; }
+    .fl-hero p { margin: 0.5rem 0 0; opacity: 0.95; font-size: 1rem; line-height: 1.5; }
+    .fl-goals {
+        display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem;
+    }
+    .fl-goal-pill {
+        background: rgba(255,255,255,0.18); border-radius: 999px;
+        padding: 0.25rem 0.7rem; font-size: 0.78rem; font-weight: 600;
+    }
+    .fl-section { color: #f1f5f9; font-size: 1.25rem; font-weight: 800; margin: 1.5rem 0 0.4rem; }
+    .fl-sub { color: #94a3b8; font-size: 0.9rem; margin-bottom: 0.85rem; line-height: 1.45; }
     .fl-card {
-        background: rgba(255,255,255,0.06);
-        border: 1px solid rgba(255,255,255,0.12);
-        border-radius: 16px;
-        padding: 1rem 1.15rem;
-        margin-bottom: 0.65rem;
-        color: #e2e8f0;
+        background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 14px; padding: 1rem 1.1rem; margin-bottom: 0.6rem; color: #e2e8f0;
+        line-height: 1.5;
     }
-    .fl-card h3 { color: #f8fafc; margin: 0 0 0.35rem; font-size: 1rem; }
-    .fl-card p { margin: 0; color: #cbd5e1; font-size: 0.9rem; line-height: 1.5; }
-    .fl-section {
-        color: #f1f5f9;
-        font-size: 1.35rem;
-        font-weight: 800;
-        margin: 1.5rem 0 0.75rem;
+    .fl-card-highlight {
+        background: linear-gradient(135deg, rgba(124,58,237,0.25), rgba(219,39,119,0.15));
+        border: 1px solid rgba(167,139,250,0.35);
     }
-    .fl-sub { color: #94a3b8; font-size: 0.92rem; margin-bottom: 1rem; }
-    .fl-domain-chip {
-        display: inline-block;
-        background: rgba(255,255,255,0.08);
-        border: 1px solid rgba(255,255,255,0.15);
-        border-radius: 12px;
-        padding: 0.55rem 0.85rem;
-        margin: 0.25rem;
-        color: #e2e8f0;
-        font-size: 0.88rem;
-        font-weight: 600;
-    }
-    .fl-timeline-year {
-        font-size: 2rem;
-        font-weight: 900;
+    .fl-year {
+        font-size: 1.75rem; font-weight: 900;
         background: linear-gradient(90deg, #a78bfa, #f472b6);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 0.25rem;
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
-    .fl-impact-pill {
-        display: inline-block;
-        border-radius: 999px;
-        padding: 0.35rem 0.85rem;
-        font-size: 0.82rem;
-        font-weight: 700;
-        margin-right: 0.35rem;
+    .fl-year-forecast { opacity: 0.85; }
+    .fl-step {
+        display: inline-block; background: linear-gradient(90deg, #7c3aed, #db2777);
+        border-radius: 999px; padding: 0.25rem 0.75rem; font-size: 0.72rem;
+        font-weight: 800; color: white; margin-right: 0.4rem; letter-spacing: 0.03em;
     }
-    div[data-testid="stMetric"] {
-        background: rgba(255,255,255,0.06);
-        border: 1px solid rgba(255,255,255,0.12);
-        border-radius: 14px;
-        padding: 0.65rem;
+    .fl-step-done { background: rgba(34,197,94,0.35); color: #86efac; }
+    .fl-breadcrumb {
+        background: rgba(255,255,255,0.08); border-radius: 12px; padding: 0.75rem 1rem;
+        color: #cbd5e1; font-size: 0.92rem; margin: 0.75rem 0 1rem;
     }
-    div[data-testid="stMetric"] label { color: #94a3b8 !important; }
-    div[data-testid="stMetric"] [data-testid="stMetricValue"] { color: #f8fafc !important; }
+    .fl-breadcrumb strong { color: #f1f5f9; }
+    .fl-driver {
+        background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 14px; padding: 1rem; height: 100%; color: #e2e8f0;
+    }
+    .fl-driver-icon { font-size: 1.6rem; margin-bottom: 0.3rem; }
+    .fl-driver-name { font-weight: 800; color: #f1f5f9; font-size: 0.95rem; margin-bottom: 0.35rem; }
+    .fl-driver-desc { font-size: 0.82rem; color: #94a3b8; line-height: 1.45; }
+    .fl-advice-title { color: #c4b5fd; font-weight: 700; font-size: 0.95rem; margin-bottom: 0.4rem; }
+    .fl-advice-item {
+        background: rgba(255,255,255,0.04); border-left: 3px solid #7c3aed;
+        padding: 0.5rem 0.75rem; margin-bottom: 0.35rem; border-radius: 0 8px 8px 0;
+        color: #e2e8f0; font-size: 0.88rem;
+    }
+    .fl-sim-scene {
+        background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 16px; padding: 1.1rem 1.2rem; margin-bottom: 0.65rem;
+        color: #e2e8f0; min-height: 120px;
+    }
+    .fl-sim-label { color: #a78bfa; font-weight: 800; font-size: 0.85rem; margin-bottom: 0.4rem; }
+    .fl-day-block {
+        background: rgba(124,58,237,0.15); border: 1px solid rgba(167,139,250,0.3);
+        border-radius: 10px; padding: 0.65rem 0.85rem; margin-bottom: 0.4rem;
+        color: #e2e8f0; font-size: 0.85rem;
+    }
+    .fl-day-time { color: #c4b5fd; font-weight: 700; font-size: 0.78rem; }
+    .fl-timeline-nav {
+        display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 1rem;
+    }
+    .fl-timeline-era {
+        background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 10px; padding: 0.5rem 0.75rem; text-align: center;
+        color: #94a3b8; font-size: 0.8rem; min-width: 70px;
+    }
+    .fl-timeline-era-active {
+        background: linear-gradient(135deg, rgba(124,58,237,0.4), rgba(219,39,119,0.25));
+        border-color: rgba(167,139,250,0.5); color: #f1f5f9; font-weight: 700;
+    }
+    .fl-forecast-badge {
+        display: inline-block; background: rgba(245,158,11,0.25); color: #fbbf24;
+        border-radius: 999px; padding: 0.15rem 0.55rem; font-size: 0.7rem;
+        font-weight: 700; margin-left: 0.4rem; vertical-align: middle;
+    }
+    div[data-testid="stSidebar"] { background: rgba(15,10,30,0.95); }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-
-# ── Session state defaults ────────────────────────────────────────────────────
-
-if "impact" not in st.session_state:
-    st.session_state.impact = "Balanced"
-if "selected_domain" not in st.session_state:
-    st.session_state.selected_domain = "teaching"
-if "timeline_year" not in st.session_state:
-    st.session_state.timeline_year = 2025
-if "run_sim" not in st.session_state:
-    st.session_state.run_sim = False
-
-
-def _domain_by_key(key: str) -> DomainInfo | None:
-    for d in DOMAINS:
-        if d.key == key:
-            return d
-    return None
+for key, default in (
+    ("broad_domain", None),
+    ("area", None),
+    ("specific_skill", None),
+    ("sim_year", 2030),
+    ("timeline_year", None),
+    ("wizard_complete", False),
+):
+    if key not in st.session_state:
+        st.session_state[key] = default
 
 
 def _render_hero() -> None:
@@ -132,281 +136,336 @@ def _render_hero() -> None:
         """
         <div class="fl-hero">
             <h1>🔮 Future Lens: AI Transition Simulator</h1>
-            <p>See how work, learning, creativity, sports, investing, and everyday life evolved
-            from 1980 to today — and explore playful, thoughtful scenarios for 2030–2050.</p>
+            <p>Start with a broad domain — not a random job. Drill down to one specific skill,
+            then explore how it evolved, why it changed, and how to prepare for 2030–2050.</p>
+            <div class="fl-goals">
+                <span class="fl-goal-pill">1 · How it evolved</span>
+                <span class="fl-goal-pill">2 · Why it changed</span>
+                <span class="fl-goal-pill">3 · Where it's heading</span>
+                <span class="fl-goal-pill">4 · Practical advice</span>
+                <span class="fl-goal-pill">5 · Future simulation</span>
+            </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
 
-def _render_home() -> None:
-    st.markdown('<div class="fl-section">🏠 What is Future Lens?</div>', unsafe_allow_html=True)
-    c1, c2 = st.columns(2, gap="medium")
-    with c1:
-        st.markdown(
-            """
-            <div class="fl-card">
-                <h3>🌌 A time-travel lens on AI</h3>
-                <p>Future Lens is an interactive simulator — not a prediction engine.
-                It helps you explore how tools, skills, and daily workflows changed decade by decade,
-                and how AI might reshape them next.</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    with c2:
-        st.markdown(
-            """
-            <div class="fl-card">
-                <h3>🎯 Built for curiosity</h3>
-                <p>Teachers, investors, musicians, athletes, students, and creators can all
-                explore their domain, compare eras, and imagine future workflows —
-                with Conservative, Balanced, or Aggressive AI futures.</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    st.markdown('<div class="fl-section">⚡ Why AI is changing work</div>', unsafe_allow_html=True)
-    st.markdown(
-        """
-        <div class="fl-sub">AI compresses the cost of drafting, analyzing, and coordinating —
-        which shifts human value toward judgment, relationships, creativity, and ethics.</div>
-        """,
-        unsafe_allow_html=True,
-    )
-    m1, m2, m3, m4 = st.columns(4)
-    with m1:
-        st.metric("1980 → 2025", "Tool explosion", "PC → Cloud → Copilots")
-    with m2:
-        st.metric("Skills shift", "Less routine", "More judgment")
-    with m3:
-        st.metric("Domains", str(len(DOMAINS)), "6 categories")
-    with m4:
-        st.metric("Future horizon", "2050", "3 AI scenarios")
-
-    st.markdown('<div class="fl-section">🎛️ Interactive domain selector</div>', unsafe_allow_html=True)
-    st.markdown('<div class="fl-sub">Pick a domain to explore across the timeline and future simulator.</div>', unsafe_allow_html=True)
-
-    for category in DOMAIN_CATEGORIES:
-        st.markdown(f"**{category}**")
-        chips = [d for d in DOMAINS if d.category == category]
-        cols = st.columns(min(len(chips), 4))
-        for col, domain in zip(cols, chips):
-            with col:
-                if st.button(
-                    f"{domain.icon} {domain.name}",
-                    key=f"pick_{domain.key}",
-                    use_container_width=True,
-                ):
-                    st.session_state.selected_domain = domain.key
-                    st.rerun()
-
-    selected = _domain_by_key(st.session_state.selected_domain)
-    if selected:
-        st.success(f"Selected: {selected.icon} **{selected.name}** — {selected.tagline}")
-
-
-def _render_timeline() -> None:
-    st.markdown('<div class="fl-section">🕰️ Timeline Explorer</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="fl-sub">Slide through decades — see how people worked, what tools existed, and what changed.</div>',
-        unsafe_allow_html=True,
-    )
-
-    year = st.select_slider(
-        "Choose a year",
-        options=list(TIMELINE_YEARS),
-        value=st.session_state.timeline_year,
-        key="timeline_slider",
-    )
-    st.session_state.timeline_year = year
-    era = TIMELINE[year]
-
-    st.markdown(f'<div class="fl-timeline-year">{year}</div>', unsafe_allow_html=True)
-    st.markdown(f"### {era.headline}")
-
-    t1, t2 = st.columns(2, gap="medium")
-    cards = [
-        ("👷 How people worked", era.how_people_worked),
-        ("🛠️ Tools that existed", era.tools),
-        ("🧠 Skills that mattered", era.skills),
-        ("🤖 What AI changed", era.ai_changed),
+def _render_progress() -> None:
+    steps = [
+        ("STEP 1", "Domain", st.session_state.broad_domain),
+        ("STEP 2", "Area", st.session_state.area),
+        ("STEP 3", "Skill", st.session_state.specific_skill),
     ]
-    for col, (title, body) in zip([t1, t2, t1, t2], cards):
+    cols = st.columns(3)
+    for col, (label, name, value) in zip(cols, steps):
+        done = value is not None
+        cls = "fl-step fl-step-done" if done else "fl-step"
         with col:
             st.markdown(
-                f'<div class="fl-card"><h3>{title}</h3><p>{body}</p></div>',
+                f'<span class="{cls}">{label}</span> **{name}**'
+                + (f"<br><small>{value}</small>" if value else ""),
                 unsafe_allow_html=True,
             )
 
+
+def _render_selection_wizard() -> bool:
+    st.markdown('<div class="fl-section">Choose your focus</div>', unsafe_allow_html=True)
     st.markdown(
-        f'<div class="fl-card"><h3>🔭 What may happen next</h3><p>{era.whats_next}</p></div>',
+        '<div class="fl-sub">Follow the hierarchy: broad domain → specific area → one precise skill or activity.</div>',
         unsafe_allow_html=True,
     )
+    _render_progress()
 
-    if year >= 2025:
-        st.info("💡 Tip: Jump to **Future Simulation** to see a detailed workflow for your selected domain.")
+    # Step 1 — Domain (visual grid)
+    st.markdown('<span class="fl-step">STEP 1</span> **Choose a broad domain**', unsafe_allow_html=True)
+    domain_cols = st.columns(4)
+    prev_domain = st.session_state.broad_domain
+    for i, domain in enumerate(BROAD_DOMAINS):
+        with domain_cols[i % 4]:
+            icon = DOMAIN_ICONS.get(domain, "🔮")
+            if st.button(f"{icon} {domain}", key=f"domain_{domain}", use_container_width=True):
+                st.session_state.broad_domain = domain
+                if prev_domain != domain:
+                    st.session_state.area = None
+                    st.session_state.specific_skill = None
+                    st.session_state.timeline_year = None
+                st.rerun()
 
-
-def _render_domains() -> None:
-    st.markdown('<div class="fl-section">🗂️ Explore Domains</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="fl-sub">22 domains across work, education, investing, sports, music, and media.</div>',
-        unsafe_allow_html=True,
-    )
-
-    domain_key = st.selectbox(
-        "Choose a domain",
-        options=[d.key for d in DOMAINS],
-        format_func=lambda k: f"{_domain_by_key(k).icon} {_domain_by_key(k).name} — {_domain_by_key(k).category}",
-        index=[d.key for d in DOMAINS].index(st.session_state.selected_domain),
-    )
-    st.session_state.selected_domain = domain_key
-    domain = _domain_by_key(domain_key)
+    domain = st.session_state.broad_domain
     if not domain:
-        return
+        st.info("Select a domain above to continue.")
+        return False
 
+    # Step 2 — Area
+    areas = AREAS.get(domain, ("General activity",))
+    st.markdown('<span class="fl-step">STEP 2</span> **Choose a more specific area**', unsafe_allow_html=True)
+    prev_area = st.session_state.area
+    area = st.selectbox(
+        "Area",
+        areas,
+        index=areas.index(st.session_state.area) if st.session_state.area in areas else 0,
+        key="_area_select",
+        label_visibility="collapsed",
+    )
+    if area != prev_area:
+        st.session_state.area = area
+        st.session_state.specific_skill = None
+        st.session_state.timeline_year = None
+        st.rerun()
+    st.session_state.area = area
+
+    # Step 3 — Skill
+    specifics = get_skills_for_area(domain, area)
+    st.markdown(
+        '<span class="fl-step">STEP 3</span> **Choose a specific skill or activity**',
+        unsafe_allow_html=True,
+    )
+    prev_skill = st.session_state.specific_skill
+    specific = st.selectbox(
+        "Skill",
+        specifics,
+        index=specifics.index(st.session_state.specific_skill) if st.session_state.specific_skill in specifics else 0,
+        key="_skill_select",
+        label_visibility="collapsed",
+    )
+    if specific != prev_skill:
+        st.session_state.specific_skill = specific
+        st.session_state.timeline_year = None
+        st.rerun()
+    st.session_state.specific_skill = specific
+
+    icon = DOMAIN_ICONS.get(domain, "🔮")
     st.markdown(
         f"""
-        <div class="fl-card" style="border-left: 4px solid {domain.color};">
-            <h3>{domain.icon} {domain.name}</h3>
-            <p><strong>{domain.category}</strong> · {domain.tagline}</p>
+        <div class="fl-breadcrumb">
+            {icon} <strong>{domain}</strong> → <strong>{area}</strong> → <strong>{specific}</strong>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    return True
+
+
+def _render_timeline(profile) -> None:
+    st.markdown('<div class="fl-section">📅 How this skill evolved</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="fl-sub">Exactly how this specific activity changed decade by decade — from the past through today into forecast years.</div>',
+        unsafe_allow_html=True,
+    )
+
+    years = [p.year for p in profile.timeline]
+    if st.session_state.timeline_year not in years:
+        st.session_state.timeline_year = years[0]
+
+    nav_html = '<div class="fl-timeline-nav">'
+    for y in years:
+        pt = next(p for p in profile.timeline if p.year == y)
+        active = " fl-timeline-era-active" if y == st.session_state.timeline_year else ""
+        forecast = " 🔮" if pt.is_forecast else ""
+        nav_html += f'<div class="fl-timeline-era{active}">{y}{forecast}</div>'
+    nav_html += "</div>"
+    st.markdown(nav_html, unsafe_allow_html=True)
+
+    year_cols = st.columns(min(len(years), 8))
+    for i, y in enumerate(years):
+        with year_cols[i % len(year_cols)]:
+            pt = next(p for p in profile.timeline if p.year == y)
+            label = f"{y}{'  🔮' if pt.is_forecast else ''}"
+            if st.button(label, key=f"year_{y}", use_container_width=True):
+                st.session_state.timeline_year = y
+                st.rerun()
+
+    point = next(p for p in profile.timeline if p.year == st.session_state.timeline_year)
+    forecast_cls = " fl-year-forecast" if point.is_forecast else ""
+    badge = '<span class="fl-forecast-badge">FORECAST</span>' if point.is_forecast else ""
+    st.markdown(
+        f'<div class="fl-year{forecast_cls}">{point.year}{badge}</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        f"""
+        <div class="fl-card fl-card-highlight">
+            <strong style="font-size:1.1rem;">{point.headline}</strong><br><br>
+            {point.description}<br><br>
+            <span style="color:#a78bfa;font-weight:700;">Tools & methods:</span> {point.tools}
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    st.markdown("**Quick era comparison**")
-    c1, c2, c3 = st.columns(3)
-    for col, yr in zip([c1, c2, c3], (2000, 2025, 2040)):
+    st.markdown("**Full evolution at a glance**")
+    for point in profile.timeline:
+        tag = " 🔮" if point.is_forecast else ""
+        st.markdown(
+            f"**{point.year}{tag}** — {point.headline}: {point.description[:120]}{'…' if len(point.description) > 120 else ''}"
+        )
+
+
+def _render_drivers(profile) -> None:
+    st.markdown('<div class="fl-section">🔍 What drove the changes?</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="fl-sub">Five forces shaped how this skill transformed — and will keep shaping it.</div>',
+        unsafe_allow_html=True,
+    )
+    cols = st.columns(len(profile.drivers))
+    for col, driver in zip(cols, profile.drivers):
         with col:
-            era = TIMELINE[yr]
-            st.markdown(f"**{yr}**")
-            st.caption(era.how_people_worked[:120] + "…")
-
-
-def _render_impact_meter() -> str:
-    st.markdown('<div class="fl-section">📊 AI Impact Meter</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="fl-sub">Choose how fast and how deeply AI reshapes the future in this simulator.</div>',
-        unsafe_allow_html=True,
-    )
-
-    impact = st.radio(
-        "Future intensity",
-        options=list(IMPACT_PROFILES.keys()),
-        horizontal=True,
-        format_func=lambda k: f"{IMPACT_PROFILES[k]['emoji']} {k}",
-        index=list(IMPACT_PROFILES.keys()).index(st.session_state.impact),
-    )
-    st.session_state.impact = impact
-    profile = IMPACT_PROFILES[impact]
-
-    st.markdown(
-        f"""
-        <div class="fl-card">
-            <h3>{profile['emoji']} {profile['label']} AI future</h3>
-            <p>{profile['description']}</p>
-            <p><em>{profile['tone']}</em></p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    return impact
-
-
-def _render_future_simulation(impact: str) -> None:
-    st.markdown('<div class="fl-section">🚀 Future Simulation</div>', unsafe_allow_html=True)
-
-    domain = _domain_by_key(st.session_state.selected_domain)
-    sim_year = st.select_slider(
-        "Simulate year",
-        options=[2030, 2040, 2050],
-        value=st.session_state.sim_year,
-    )
-    st.session_state.sim_year = sim_year
-
-    if st.button("✨ Simulate My Future Workflow", type="primary", use_container_width=True):
-        st.session_state.run_sim = True
-
-    if st.session_state.run_sim:
-        dname = domain.name if domain else "Your domain"
-        st.markdown(f"### {dname} · {sim_year} · {impact} scenario")
-
-        steps = get_future_workflow(st.session_state.selected_domain, sim_year, impact)
-        for i, step in enumerate(steps, start=1):
             st.markdown(
-                f'<div class="fl-card"><h3>Step {i}</h3><p>{step}</p></div>',
+                f"""
+                <div class="fl-driver">
+                    <div class="fl-driver-icon">{driver.icon}</div>
+                    <div class="fl-driver-name">{driver.name}</div>
+                    <div class="fl-driver-desc">{driver.description}</div>
+                </div>
+                """,
                 unsafe_allow_html=True,
             )
-    else:
-        st.info("Press **Simulate My Future Workflow** to generate your scenario.")
 
 
-def _render_career_evolution(impact: str) -> None:
-    st.markdown('<div class="fl-section">🧬 Career Evolution</div>', unsafe_allow_html=True)
+def _render_future_advice(profile) -> None:
+    st.markdown('<div class="fl-section">💡 Future Advice</div>', unsafe_allow_html=True)
     st.markdown(
-        f'<div class="fl-sub">How roles may shift under a <strong>{impact}</strong> AI future.</div>',
+        '<div class="fl-sub">Connect the forecast to practical life decisions — what to learn, focus on, and watch out for.</div>',
+        unsafe_allow_html=True,
+    )
+    advice = profile.advice
+    sections = [
+        ("📖 What should I learn?", advice.learn),
+        ("⭐ Skills that will matter", advice.skills_that_matter),
+        ("🛑 Stop spending time on", advice.stop_spending_time_on),
+        ("🎯 Focus on", advice.focus_on),
+        ("🚀 Emerging opportunities", advice.opportunities),
+        ("⚠️ Risks to watch", advice.risks),
+    ]
+    c1, c2 = st.columns(2)
+    for i, (title, items) in enumerate(sections):
+        col = c1 if i % 2 == 0 else c2
+        with col:
+            items_html = "".join(f'<div class="fl-advice-item">{item}</div>' for item in items)
+            st.markdown(
+                f'<div class="fl-advice-title">{title}</div>{items_html}',
+                unsafe_allow_html=True,
+            )
+
+
+def _day_schedule(day_text: str) -> str:
+    """Split a day description into visual time blocks."""
+    parts = day_text.replace(". ", ".|").split("|")
+    labels = ["Morning", "Midday", "Afternoon", "Evening"]
+    blocks = []
+    for i, part in enumerate(parts):
+        part = part.strip()
+        if not part:
+            continue
+        label = labels[i] if i < len(labels) else f"Block {i + 1}"
+        blocks.append(
+            f'<div class="fl-day-block"><div class="fl-day-time">{label}</div>{part}</div>'
+        )
+    return "".join(blocks) if blocks else f'<div class="fl-day-block">{day_text}</div>'
+
+
+def _render_simulation_mode(profile) -> None:
+    st.markdown('<div class="fl-section">🚀 Future Simulation Mode</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="fl-sub">Step into 2030, 2040, or 2050. Experience the tools, work, learning, and a day in the life for this skill.</div>',
         unsafe_allow_html=True,
     )
 
-    evo = CAREER_EVOLUTION[impact]
-    c1, c2, c3 = st.columns(3, gap="medium")
-    sections = [
-        ("📉 Skills that decline", evo["decline"], "#f87171"),
-        ("💎 Skills that remain valuable", evo["remain"], "#34d399"),
-        ("🌱 New skills emerging", evo["emerge"], "#60a5fa"),
-    ]
-    for col, (title, items, color) in zip([c1, c2, c3], sections):
+    year_cols = st.columns(3)
+    for col, y in zip(year_cols, (2030, 2040, 2050)):
         with col:
-            st.markdown(f"**{title}**")
-            for item in items:
-                st.markdown(
-                    f'<div class="fl-card" style="border-left: 3px solid {color};"><p>{item}</p></div>',
-                    unsafe_allow_html=True,
-                )
+            active = st.session_state.sim_year == y
+            if st.button(
+                f"{'▶ ' if active else ''}{y}{'  (active)' if active else ''}",
+                key=f"sim_{y}",
+                use_container_width=True,
+                type="primary" if active else "secondary",
+            ):
+                st.session_state.sim_year = y
+                st.rerun()
+
+    year = st.session_state.sim_year
+    scene = profile.simulation[year]
+    progress = min(1.0, (year - 2020) / 30)
+    st.progress(progress, text=f"Future immersion · {year} · {int(progress * 100)}% toward 2050")
+
+    st.markdown(
+        f"""
+        <div class="fl-card fl-card-highlight" style="text-align:center;margin-bottom:1rem;">
+            <strong style="font-size:1.15rem;">You are in {year}</strong><br>
+            <span style="color:#94a3b8;">Simulating: {profile.name} · {profile.area} · {profile.domain}</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    m1, m2 = st.columns(2)
+    with m1:
+        st.markdown(
+            f'<div class="fl-sim-scene"><div class="fl-sim-label">🛠️ TOOLS YOU USE</div>{scene["tools"]}</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f'<div class="fl-sim-scene"><div class="fl-sim-label">💼 HOW WORK IS DONE</div>{scene["work"]}</div>',
+            unsafe_allow_html=True,
+        )
+    with m2:
+        st.markdown(
+            f'<div class="fl-sim-scene"><div class="fl-sim-label">📚 HOW LEARNING HAPPENS</div>{scene["learning"]}</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f'<div class="fl-sim-scene"><div class="fl-sim-label">🌅 A NORMAL DAY</div>{_day_schedule(scene["day"])}</div>',
+            unsafe_allow_html=True,
+        )
 
 
-# ── Sidebar ───────────────────────────────────────────────────────────────────
+# ── Sidebar ─────────────────────────────────────────────────────────────────
 
 with st.sidebar:
     st.markdown("## 🔮 Future Lens")
-    st.caption("AI Transition Simulator · Phase 1")
-    page = st.radio(
-        "Navigate",
-        ["Home", "Timeline Explorer", "Domains", "Future Simulation", "Career Evolution"],
-        label_visibility="collapsed",
-    )
+    st.caption("Domain → Area → Skill")
     st.divider()
-    st.markdown("**Quick settings**")
-    st.session_state.impact = st.selectbox(
-        "AI Impact",
-        list(IMPACT_PROFILES.keys()),
-        index=list(IMPACT_PROFILES.keys()).index(st.session_state.impact),
+    if st.session_state.broad_domain:
+        st.markdown(f"**Domain:** {DOMAIN_ICONS.get(st.session_state.broad_domain, '')} {st.session_state.broad_domain}")
+    else:
+        st.markdown("**Domain:** —")
+    st.markdown(f"**Area:** {st.session_state.area or '—'}")
+    st.markdown(f"**Skill:** {st.session_state.specific_skill or '—'}")
+    st.divider()
+    st.markdown("**How to use**")
+    st.markdown(
+        "1. Pick a domain\n2. Narrow to an area\n3. Choose one skill\n4. Explore the timeline\n5. Read the advice\n6. Simulate the future"
     )
-    st.session_state.selected_domain = st.selectbox(
-        "Domain",
-        [d.key for d in DOMAINS],
-        format_func=lambda k: f"{_domain_by_key(k).icon} {_domain_by_key(k).name}",
-        index=[d.key for d in DOMAINS].index(st.session_state.selected_domain),
-    )
+    if st.button("↩ Start over", use_container_width=True):
+        for k in ("broad_domain", "area", "specific_skill", "timeline_year"):
+            st.session_state[k] = None
+        st.session_state.sim_year = 2030
+        st.rerun()
 
-# ── Main pages ────────────────────────────────────────────────────────────────
+# ── Main ──────────────────────────────────────────────────────────────────────
 
 _render_hero()
 
-if page == "Home":
-    _render_home()
-elif page == "Timeline Explorer":
-    _render_timeline()
-elif page == "Domains":
-    _render_domains()
-elif page == "Future Simulation":
-    impact = _render_impact_meter()
-    _render_future_simulation(impact)
-elif page == "Career Evolution":
-    _render_career_evolution(st.session_state.impact)
+if _render_selection_wizard():
+    profile = build_skill_profile(
+        st.session_state.broad_domain,
+        st.session_state.area,
+        st.session_state.specific_skill,
+    )
 
-st.caption("Future Lens · Phase 1 prototype · demo data · part of the Daniel AI Suite ecosystem")
+    st.divider()
+    tab_timeline, tab_drivers, tab_advice, tab_sim = st.tabs(
+        ["📅 Evolution", "🔍 Drivers", "💡 Future Advice", "🚀 Simulation"]
+    )
+    with tab_timeline:
+        _render_timeline(profile)
+    with tab_drivers:
+        _render_drivers(profile)
+    with tab_advice:
+        _render_future_advice(profile)
+    with tab_sim:
+        _render_simulation_mode(profile)
+
+st.caption("Future Lens · Daniel AI Suite · educational simulator · forecasts are illustrative")
