@@ -454,6 +454,24 @@ if _render_selection_wizard():
         st.session_state.area,
         st.session_state.specific_skill,
     )
+    try:
+        from suite_activity_client import record_activity
+
+        project = f"{st.session_state.broad_domain} / {st.session_state.area}"
+        simulation = str(st.session_state.specific_skill or "")
+        record_activity(
+            "future_lens",
+            "simulation",
+            page="Simulation",
+            metrics={"project": project, "simulation": simulation},
+            summary=f"Future Lens: {simulation}",
+            resume_key=f"sim:{simulation}",
+            resume_title=f"Continue: {simulation}",
+            resume_subtitle=project,
+            local_state={"project": project, "simulation": simulation, "page": "Simulation"},
+        )
+    except Exception:
+        pass
 
     st.divider()
     tab_timeline, tab_drivers, tab_advice, tab_sim = st.tabs(
