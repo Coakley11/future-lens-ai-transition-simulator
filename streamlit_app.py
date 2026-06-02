@@ -25,6 +25,13 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+try:
+    from suite_resume_launch import apply_suite_resume_launch
+
+    apply_suite_resume_launch(st, "future_lens")
+except Exception:
+    pass
+
 st.markdown(
     """
     <style>
@@ -274,6 +281,12 @@ def _render_timeline(profile) -> None:
             label = f"{y}{'  🔮' if pt.is_forecast else ''}"
             if st.button(label, key=f"year_{y}", use_container_width=True):
                 st.session_state.timeline_year = y
+                try:
+                    from future_lens_activity import log_technology_timeline_review
+
+                    log_technology_timeline_review(topic=str(y))
+                except Exception:
+                    pass
                 st.rerun()
 
     point = next(p for p in profile.timeline if p.year == st.session_state.timeline_year)
@@ -324,6 +337,15 @@ def _render_drivers(profile) -> None:
 
 
 def _render_future_advice(profile) -> None:
+    try:
+        from future_lens_activity import log_skill_forecast_review
+
+        skill_sig = (profile.domain, profile.area, profile.name)
+        if st.session_state.get("_cc_fl_skill_forecast_sig") != skill_sig:
+            st.session_state["_cc_fl_skill_forecast_sig"] = skill_sig
+            log_skill_forecast_review(skill=profile.name)
+    except Exception:
+        pass
     st.markdown('<div class="fl-section">💡 Future Advice</div>', unsafe_allow_html=True)
     st.markdown(
         '<div class="fl-sub">Connect the forecast to practical life decisions — what to learn, focus on, and watch out for.</div>',
@@ -383,6 +405,20 @@ def _render_simulation_mode(profile) -> None:
                 type="primary" if active else "secondary",
             ):
                 st.session_state.sim_year = y
+                try:
+                    from future_lens_activity import log_simulation_completed
+
+                    project = f"{profile.domain} / {profile.area}"
+                    sim_sig = (project, profile.name, y)
+                    if st.session_state.get("_cc_fl_sim_year_sig") != sim_sig:
+                        st.session_state["_cc_fl_sim_year_sig"] = sim_sig
+                        log_simulation_completed(
+                            simulation=profile.name,
+                            project=project,
+                            domain=profile.domain,
+                        )
+                except Exception:
+                    pass
                 st.rerun()
 
     year = st.session_state.sim_year
@@ -454,25 +490,6 @@ if _render_selection_wizard():
         st.session_state.area,
         st.session_state.specific_skill,
     )
-    try:
-        from suite_activity_client import record_activity
-
-        project = f"{st.session_state.broad_domain} / {st.session_state.area}"
-        simulation = str(st.session_state.specific_skill or "")
-        record_activity(
-            "future_lens",
-            "simulation",
-            page="Simulation",
-            metrics={"project": project, "simulation": simulation},
-            summary=f"Future Lens: {simulation}",
-            resume_key=f"sim:{simulation}",
-            resume_title=f"Continue: {simulation}",
-            resume_subtitle=project,
-            local_state={"project": project, "simulation": simulation, "page": "Simulation"},
-        )
-    except Exception:
-        pass
-
     st.divider()
     tab_timeline, tab_drivers, tab_advice, tab_sim = st.tabs(
         ["📅 Evolution", "🔍 Drivers", "💡 Future Advice", "🚀 Simulation"]
