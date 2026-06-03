@@ -32,6 +32,18 @@ try:
 except Exception:
     pass
 
+try:
+    from future_lens_persistent_state import (
+        autosave_future_lens_state,
+        restore_future_lens_state_once,
+    )
+    from suite_user_persistence import show_persistence_messages
+
+    restore_future_lens_state_once(st)
+    show_persistence_messages(st)
+except Exception:
+    pass
+
 st.markdown(
     """
     <style>
@@ -502,5 +514,12 @@ if _render_selection_wizard():
         _render_future_advice(profile)
     with tab_sim:
         _render_simulation_mode(profile)
+
+try:
+    from future_lens_persistent_state import autosave_future_lens_state
+
+    autosave_future_lens_state(st)
+except Exception:
+    pass
 
 st.caption("Future Lens · Daniel AI Suite · educational simulator · forecasts are illustrative")
