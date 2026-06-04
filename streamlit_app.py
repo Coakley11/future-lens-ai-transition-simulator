@@ -32,18 +32,6 @@ try:
 except Exception:
     pass
 
-try:
-    from future_lens_persistent_state import (
-        autosave_future_lens_state,
-        restore_future_lens_state_once,
-    )
-    from suite_user_persistence import show_persistence_messages
-
-    restore_future_lens_state_once(st)
-    show_persistence_messages(st)
-except Exception:
-    pass
-
 st.markdown(
     """
     <style>
@@ -486,11 +474,23 @@ with st.sidebar:
     st.markdown(
         "1. Pick a domain\n2. Narrow to an area\n3. Choose one skill\n4. Explore the timeline\n5. Read the advice\n6. Simulate the future"
     )
-    if st.button("↩ Start over", use_container_width=True):
-        for k in ("broad_domain", "area", "specific_skill", "timeline_year"):
-            st.session_state[k] = None
-        st.session_state.sim_year = 2030
-        st.rerun()
+    try:
+        from future_lens_persistent_state import (
+            default_reset_future_lens_session,
+            restore_future_lens_state_once,
+        )
+        from suite_user_persistence import render_reset_controls, show_persistence_messages
+
+        restore_future_lens_state_once(st)
+        show_persistence_messages(st)
+        render_reset_controls(
+            st,
+            "future_lens",
+            on_reset=default_reset_future_lens_session,
+            help_text="Clears wizard progress, local disk, and cloud session for Future Lens.",
+        )
+    except Exception:
+        pass
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
