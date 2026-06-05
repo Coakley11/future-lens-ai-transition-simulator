@@ -460,6 +460,12 @@ def _render_simulation_mode(profile) -> None:
 # ── Sidebar ─────────────────────────────────────────────────────────────────
 
 with st.sidebar:
+    try:
+        from suite_command_center_link import render_command_center_sidebar_link
+
+        render_command_center_sidebar_link(st)
+    except Exception:
+        pass
     st.markdown("## 🔮 Future Lens")
     st.caption("Domain → Area → Skill")
     st.divider()
