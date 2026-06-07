@@ -386,6 +386,29 @@ def _render_future_advice(profile) -> None:
             )
 
 
+def _maybe_log_career_analysis(profile) -> None:
+    """Log career transition analysis once per domain/area/skill (Command Center Continue)."""
+    try:
+        from future_lens_activity import log_career_analysis
+
+        sig = (profile.domain, profile.area, profile.name)
+        if st.session_state.get("_cc_fl_career_sig") == sig:
+            return
+        st.session_state["_cc_fl_career_sig"] = sig
+        st.session_state["wizard_complete"] = True
+        scenario = f"{profile.domain} / {profile.area} / {profile.name}"
+        log_career_analysis(
+            scenario=scenario,
+            domain=profile.domain,
+            area=profile.area,
+            skill=profile.name,
+            sim_year=st.session_state.get("sim_year"),
+            timeline_year=st.session_state.get("timeline_year"),
+        )
+    except Exception:
+        pass
+
+
 def _day_schedule(day_text: str) -> str:
     """Split a day description into visual time blocks."""
     parts = day_text.replace(". ", ".|").split("|")
@@ -431,6 +454,8 @@ def _render_simulation_mode(profile) -> None:
                             simulation=profile.name,
                             project=project,
                             domain=profile.domain,
+                            area=profile.area,
+                            sim_year=y,
                         )
                 except Exception:
                     pass
@@ -528,6 +553,7 @@ if _render_selection_wizard():
     )
 
     apply_future_lens_view_from_restore(st)
+    _maybe_log_career_analysis(profile)
     tab_label = st.radio(
         "Section",
         list(FL_TAB_LABELS),

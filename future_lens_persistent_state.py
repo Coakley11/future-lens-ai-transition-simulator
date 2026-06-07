@@ -82,19 +82,26 @@ def sync_future_lens_view_after_tab(st: Any, tab_label: str) -> None:
 
 
 def _apply_suite_fl_sim(st: Any) -> None:
-    """Map resume/deep-link simulation hint onto wizard fields when missing."""
-    sim = str(st.session_state.get("_suite_fl_sim") or "").strip()
-    if not sim:
-        return
-    if not st.session_state.get("specific_skill"):
-        st.session_state["specific_skill"] = sim
-    project = str(st.session_state.get("future_project") or "").strip()
-    if project and " / " in project and not st.session_state.get("broad_domain"):
+    """Map resume/deep-link hints onto wizard fields when missing."""
+    ss = st.session_state
+    domain = str(ss.get("broad_domain") or ss.get("_suite_fl_domain") or "").strip()
+    area = str(ss.get("area") or ss.get("_suite_fl_area") or "").strip()
+    sim = str(ss.get("_suite_fl_sim") or ss.get("specific_skill") or "").strip()
+    if domain and not ss.get("broad_domain"):
+        ss["broad_domain"] = domain
+    if area and not ss.get("area"):
+        ss["area"] = area
+    if sim and not ss.get("specific_skill"):
+        ss["specific_skill"] = sim
+    project = str(ss.get("future_project") or "").strip()
+    if project and " / " in project and not ss.get("broad_domain"):
         domain_part, _, area_part = project.partition(" / ")
         if domain_part.strip():
-            st.session_state["broad_domain"] = domain_part.strip()
+            ss["broad_domain"] = domain_part.strip()
         if area_part.strip():
-            st.session_state["area"] = area_part.strip()
+            ss["area"] = area_part.strip()
+    if domain and area:
+        ss.setdefault("future_project", f"{domain} / {area}")
 
 
 def build_future_lens_disk_state(st: Any) -> dict[str, Any]:

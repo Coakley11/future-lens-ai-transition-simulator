@@ -35,7 +35,7 @@ def _record(
         pass
 
 
-def log_simulation_completed(*, simulation: str, project: str = "", domain: str = "") -> None:
+def log_simulation_completed(*, simulation: str, project: str = "", domain: str = "", area: str = "", sim_year: int | None = None) -> None:
     sim = str(simulation or domain or "").strip()
     proj = str(project or "").strip()
     lower = sim.lower()
@@ -45,10 +45,19 @@ def log_simulation_completed(*, simulation: str, project: str = "", domain: str 
         title = "Continue AI career transition analysis"
     else:
         title = f"Continue {sim} simulation"
+    metrics: dict[str, Any] = {"simulation": sim, "project": proj, "domain": domain}
+    if domain:
+        metrics["broad_domain"] = domain
+    if area:
+        metrics["area"] = area
+    if sim:
+        metrics["specific_skill"] = sim
+    if sim_year is not None:
+        metrics["sim_year"] = sim_year
     _record(
         "simulation_completed",
         page="Simulation",
-        metrics={"simulation": sim, "project": proj, "domain": domain},
+        metrics=metrics,
         summary=f"Simulated future of {sim}" if sim else "Completed a future scenario",
         resume_key=f"sim:{sim[:40]}",
         resume_title=title,
@@ -56,16 +65,41 @@ def log_simulation_completed(*, simulation: str, project: str = "", domain: str 
     )
 
 
-def log_career_analysis(*, scenario: str) -> None:
+def log_career_analysis(
+    *,
+    scenario: str,
+    domain: str = "",
+    area: str = "",
+    skill: str = "",
+    sim_year: int | None = None,
+    timeline_year: int | None = None,
+) -> None:
     label = str(scenario or "").strip()
+    dom = str(domain or "").strip()
+    ar = str(area or "").strip()
+    sk = str(skill or "").strip()
+    project = f"{dom} / {ar}".strip(" /") if dom or ar else label
+    metrics: dict[str, Any] = {
+        "scenario": label,
+        "project": project,
+        "simulation": sk or label,
+        "domain": dom,
+        "broad_domain": dom,
+        "area": ar,
+        "specific_skill": sk,
+    }
+    if sim_year is not None:
+        metrics["sim_year"] = sim_year
+    if timeline_year is not None:
+        metrics["timeline_year"] = timeline_year
     _record(
         "career_analysis",
         page="Simulation",
-        metrics={"scenario": label, "project": label},
+        metrics=metrics,
         summary=f"Compared future career scenarios ({label})" if label else "Compared future career scenarios",
         resume_key=f"career:{label[:40]}",
         resume_title="Continue career transition analysis",
-        resume_subtitle=label,
+        resume_subtitle=project or label,
     )
 
 
