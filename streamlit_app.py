@@ -554,10 +554,16 @@ with st.sidebar:
     st.markdown(
         "1. Pick a domain\n2. Narrow to an area\n3. Choose one skill\n4. Explore the timeline\n5. Read the advice\n6. Simulate the future"
     )
+    st.divider()
+    reset_trace: dict[str, Any] = st.session_state.setdefault("_fl_reset_render_trace", {})
+    reset_trace["attempted"] = True
     try:
         from suite_user_persistence import render_reset_controls, show_persistence_messages
 
-        show_persistence_messages(st)
+        try:
+            show_persistence_messages(st)
+        except Exception as msg_exc:
+            reset_trace["messages_error"] = str(msg_exc)
         render_reset_controls(
             st,
             "future_lens",
@@ -565,11 +571,22 @@ with st.sidebar:
             help_text="Clears wizard progress, local disk, and cloud session for Future Lens.",
             in_sidebar=True,
         )
+        reset_trace["completed"] = True
+        reset_trace.pop("error", None)
     except Exception as exc:
+        reset_trace["completed"] = False
+        reset_trace["error"] = str(exc)
+        st.caption("Saved session controls unavailable.")
         if st.session_state.get("developer_mode"):
-            st.sidebar.caption(f"Saved session controls unavailable: {exc}")
+            st.caption(f"Reset error: {exc}")
     try:
         render_wizard_trace(st)
+    except Exception:
+        pass
+    try:
+        from suite_deploy_probe import render_future_lens_deploy_probe
+
+        render_future_lens_deploy_probe(st)
     except Exception:
         pass
 

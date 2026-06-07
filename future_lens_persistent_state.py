@@ -155,8 +155,8 @@ def restore_future_lens_state_once(st: Any) -> bool:
     )
 
 
-def autosave_future_lens_state(st: Any) -> None:
-    autosave_if_changed(st, APP_ID, build_state=build_future_lens_disk_state)
+def autosave_future_lens_state(st: Any) -> dict[str, Any]:
+    return autosave_if_changed(st, APP_ID, build_state=build_future_lens_disk_state)
 
 
 def default_reset_future_lens_session(st: Any) -> None:
