@@ -14,18 +14,23 @@ FL_WIZARD_KEYS: tuple[tuple[str, Any], ...] = (
 )
 
 TRACE_KEY = "_fl_wizard_trace"
-FL_PERSIST_DEPLOY_VERSION = "2026-06-08-prod-persist-v2"
+FL_PERSIST_DEPLOY_VERSION = "2026-06-08-prod-persist-v4"
 
 
 def init_developer_mode_from_query(st: Any) -> None:
     try:
-        raw = st.query_params.get("dev")
-        if isinstance(raw, list):
-            raw = raw[0] if raw else ""
-        if str(raw or "").strip().lower() in {"1", "true", "yes", "on"}:
-            st.session_state["developer_mode"] = True
+        from suite_deploy_probe import init_developer_mode_from_query as _init_dev
+
+        _init_dev(st)
     except Exception:
-        pass
+        try:
+            raw = st.query_params.get("dev")
+            if isinstance(raw, list):
+                raw = raw[0] if raw else ""
+            if str(raw or "").strip().lower() in {"1", "true", "yes", "on"}:
+                st.session_state["developer_mode"] = True
+        except Exception:
+            pass
 
 
 def developer_mode(st: Any) -> bool:
@@ -78,18 +83,16 @@ def update_trace(st: Any, **fields: Any) -> None:
 
 
 def render_wizard_trace(st: Any) -> None:
+    """Wizard fields are shown in suite_deploy_probe Developer diagnostics."""
     if not developer_mode(st):
         return
     ss = st.session_state
     domain = ss.get("broad_domain")
     block = "Select a domain above to continue." if not domain else ""
     ops = {}
-    try:
-        raw = ss.get("_suite_persist_ops")
-        if isinstance(raw, dict):
-            ops = dict(raw.get("future_lens") or {})
-    except Exception:
-        pass
+    raw = ss.get("_suite_persist_ops")
+    if isinstance(raw, dict):
+        ops = dict(raw.get("future_lens") or {})
     update_trace(
         st,
         session_broad_domain=domain,
@@ -102,24 +105,9 @@ def render_wizard_trace(st: Any) -> None:
         cloud_save_ok=ops.get("last_cloud_save_ok"),
         cloud_save_error=ops.get("last_cloud_save_error"),
     )
-    trace = ss.get(TRACE_KEY) or {}
-    with st.sidebar.expander("Future Lens wizard trace", expanded=False):
-        st.caption(f"Deploy: {trace.get('deploy_version', FL_PERSIST_DEPLOY_VERSION)}")
-        st.caption(f"Persistence OK: {trace.get('persistence_ok')}")
-        for label, key in (
-            ("session domain", "session_broad_domain"),
-            ("saved domain", "persisted_domain"),
-            ("restore ran", "restore_ran"),
-            ("restore source", "restore_source"),
-            ("last save source", "last_save_source"),
-            ("cloud save ok", "cloud_save_ok"),
-            ("cloud save error", "cloud_save_error"),
-            ("domain save attempted", "domain_save_attempted"),
-            ("domain save error", "domain_save_error"),
-            ("default init ran", "default_init_ran"),
-            ("persistence boot error", "boot_error"),
-            ("wizard block reason", "wizard_block_reason"),
-        ):
-            val = trace.get(key)
-            if val is not None and val != "":
-                st.text(f"{label}: {val}")
+    try:
+        from suite_deploy_probe import render_future_lens_developer_diagnostics
+
+        render_future_lens_developer_diagnostics(st)
+    except Exception:
+        pass

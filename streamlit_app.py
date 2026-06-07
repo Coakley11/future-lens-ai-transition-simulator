@@ -27,6 +27,13 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+try:
+    from suite_deploy_probe import init_developer_mode_from_query
+
+    init_developer_mode_from_query(st)
+except Exception:
+    pass
+
 import future_lens_boot as _fl_boot
 
 try:
@@ -76,6 +83,12 @@ except Exception as _wizard_import_exc:
     ensure_wizard_session_keys(st)
 
 _fl_boot.bootstrap_persistence(st)
+try:
+    from suite_user_persistence import show_persistence_messages
+
+    show_persistence_messages(st)
+except Exception:
+    pass
 try:
     _update_fl_trace(st, restore_ran=bool(st.session_state.get("_suite_disk_state_restored::future_lens")))
 except Exception:
@@ -222,6 +235,14 @@ def _render_progress() -> None:
             )
 
 
+def _persist_wizard_state() -> None:
+    try:
+        if _fl_boot.PERSISTENCE_OK:
+            _fl_boot.autosave_future_lens_state(st)
+    except Exception:
+        pass
+
+
 def _render_selection_wizard() -> bool:
     st.markdown('<div class="fl-section">Choose your focus</div>', unsafe_allow_html=True)
     st.markdown(
@@ -268,6 +289,7 @@ def _render_selection_wizard() -> bool:
         st.session_state.area = area
         st.session_state.specific_skill = None
         st.session_state.timeline_year = None
+        _persist_wizard_state()
         st.rerun()
     st.session_state.area = area
 
@@ -288,6 +310,7 @@ def _render_selection_wizard() -> bool:
     if specific != prev_skill:
         st.session_state.specific_skill = specific
         st.session_state.timeline_year = None
+        _persist_wizard_state()
         st.rerun()
     st.session_state.specific_skill = specific
 
@@ -531,7 +554,7 @@ def _render_simulation_mode(profile) -> None:
         )
 
 
-# ── Sidebar ─────────────────────────────────────────────────────────────────
+# ── Sidebar (suite-standard order) ───────────────────────────────────────────
 
 with st.sidebar:
     try:
@@ -540,6 +563,28 @@ with st.sidebar:
         render_command_center_sidebar_link(st)
     except Exception:
         pass
+
+    try:
+        from future_lens_sidebar import render_saved_session_controls
+
+        render_saved_session_controls(st, on_reset=_fl_boot.default_reset_future_lens_session)
+    except Exception as exc:
+        trace = st.session_state.setdefault("_fl_reset_render_trace", {})
+        trace["attempted"] = True
+        trace["completed"] = False
+        trace["error"] = str(exc)
+
+    try:
+        from suite_deploy_probe import render_future_lens_developer_diagnostics
+
+        render_future_lens_developer_diagnostics(st)
+    except Exception:
+        try:
+            render_wizard_trace(st)
+        except Exception:
+            pass
+
+    st.divider()
     st.markdown("## 🔮 Future Lens")
     st.caption("Domain → Area → Skill")
     st.divider()
@@ -554,41 +599,6 @@ with st.sidebar:
     st.markdown(
         "1. Pick a domain\n2. Narrow to an area\n3. Choose one skill\n4. Explore the timeline\n5. Read the advice\n6. Simulate the future"
     )
-    st.divider()
-    reset_trace: dict[str, Any] = st.session_state.setdefault("_fl_reset_render_trace", {})
-    reset_trace["attempted"] = True
-    try:
-        from suite_user_persistence import render_reset_controls, show_persistence_messages
-
-        try:
-            show_persistence_messages(st)
-        except Exception as msg_exc:
-            reset_trace["messages_error"] = str(msg_exc)
-        render_reset_controls(
-            st,
-            "future_lens",
-            on_reset=_fl_boot.default_reset_future_lens_session,
-            help_text="Clears wizard progress, local disk, and cloud session for Future Lens.",
-            in_sidebar=True,
-        )
-        reset_trace["completed"] = True
-        reset_trace.pop("error", None)
-    except Exception as exc:
-        reset_trace["completed"] = False
-        reset_trace["error"] = str(exc)
-        st.caption("Saved session controls unavailable.")
-        if st.session_state.get("developer_mode"):
-            st.caption(f"Reset error: {exc}")
-    try:
-        render_wizard_trace(st)
-    except Exception:
-        pass
-    try:
-        from suite_deploy_probe import render_future_lens_deploy_probe
-
-        render_future_lens_deploy_probe(st)
-    except Exception:
-        pass
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 

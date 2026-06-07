@@ -195,6 +195,9 @@ def restore_once(
         app_id,
         last_restore_source=restore_source,
         last_restore_domain=str(state.get("broad_domain") or "") if app_id == "future_lens" else None,
+        last_restore_area=str(state.get("area") or "") if app_id == "future_lens" else None,
+        last_restore_skill=str(state.get("specific_skill") or "") if app_id == "future_lens" else None,
+        last_restore_timeline_year=str(state.get("timeline_year") or "") if app_id == "future_lens" else None,
         last_restore_attempted=True,
         cloud_restore_had_blob=bool(cloud_state),
     )
