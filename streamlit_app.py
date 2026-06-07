@@ -25,18 +25,10 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-try:
-    from future_lens_persistent_state import (
-        apply_future_lens_session_defaults_if_missing,
-        restore_future_lens_state_once,
-    )
+import future_lens_boot as _fl_boot
 
-    restore_future_lens_state_once(st)
-    apply_future_lens_session_defaults_if_missing(st)
-    from future_lens_persistent_state import apply_future_lens_view_from_restore
-
-    apply_future_lens_view_from_restore(st)
-except Exception:
+_fl_boot.bootstrap_persistence(st)
+if not _fl_boot.PERSISTENCE_OK:
     for key, default in (
         ("broad_domain", None),
         ("area", None),
@@ -47,16 +39,11 @@ except Exception:
     ):
         if key not in st.session_state:
             st.session_state[key] = default
+    if _fl_boot.BOOT_ERROR and st.session_state.get("developer_mode"):
+        st.sidebar.warning(f"Persistence unavailable: {_fl_boot.BOOT_ERROR}")
 
-try:
-    from suite_resume_launch import apply_suite_resume_launch
-
-    apply_suite_resume_launch(st, "future_lens")
-    from future_lens_persistent_state import _apply_suite_fl_sim
-
-    _apply_suite_fl_sim(st)
-except Exception:
-    pass
+FL_ACTIVE_TAB_KEY = _fl_boot.FL_ACTIVE_TAB_KEY
+FL_TAB_LABELS = _fl_boot.FL_TAB_LABELS
 
 st.markdown(
     """
@@ -521,14 +508,13 @@ with st.sidebar:
         "1. Pick a domain\n2. Narrow to an area\n3. Choose one skill\n4. Explore the timeline\n5. Read the advice\n6. Simulate the future"
     )
     try:
-        from future_lens_persistent_state import default_reset_future_lens_session
         from suite_user_persistence import render_reset_controls, show_persistence_messages
 
         show_persistence_messages(st)
         render_reset_controls(
             st,
             "future_lens",
-            on_reset=default_reset_future_lens_session,
+            on_reset=_fl_boot.default_reset_future_lens_session,
             help_text="Clears wizard progress, local disk, and cloud session for Future Lens.",
         )
     except Exception:
@@ -545,14 +531,7 @@ if _render_selection_wizard():
         st.session_state.specific_skill,
     )
     st.divider()
-    from future_lens_persistent_state import (
-        FL_ACTIVE_TAB_KEY,
-        FL_TAB_LABELS,
-        apply_future_lens_view_from_restore,
-        sync_future_lens_view_after_tab,
-    )
-
-    apply_future_lens_view_from_restore(st)
+    _fl_boot.apply_future_lens_view_from_restore(st)
     _maybe_log_career_analysis(profile)
     tab_label = st.radio(
         "Section",
@@ -561,7 +540,7 @@ if _render_selection_wizard():
         key=FL_ACTIVE_TAB_KEY,
         label_visibility="collapsed",
     )
-    sync_future_lens_view_after_tab(st, tab_label)
+    _fl_boot.sync_future_lens_view_after_tab(st, tab_label)
     if tab_label == FL_TAB_LABELS[0]:
         _render_timeline(profile)
     elif tab_label == FL_TAB_LABELS[1]:
@@ -572,9 +551,7 @@ if _render_selection_wizard():
         _render_simulation_mode(profile)
 
 try:
-    from future_lens_persistent_state import autosave_future_lens_state
-
-    autosave_future_lens_state(st)
+    _fl_boot.autosave_future_lens_state(st)
 except Exception:
     pass
 
