@@ -8,6 +8,8 @@ Run: streamlit run streamlit_app.py
 
 from __future__ import annotations
 
+from typing import Any
+
 import streamlit as st
 
 from taxonomy import (
@@ -27,18 +29,60 @@ st.set_page_config(
 
 import future_lens_boot as _fl_boot
 
+try:
+    from future_lens_wizard import (
+        ensure_wizard_session_keys,
+        init_developer_mode_from_query,
+        render_wizard_trace,
+        select_domain,
+        update_trace as _update_fl_trace,
+    )
+
+    init_developer_mode_from_query(st)
+    ensure_wizard_session_keys(st)
+    _update_fl_trace(
+        st,
+        persistence_ok=_fl_boot.PERSISTENCE_OK,
+        boot_error=_fl_boot.BOOT_ERROR,
+    )
+except Exception as _wizard_import_exc:
+
+    def ensure_wizard_session_keys(st_obj: Any) -> None:
+        for key, default in (
+            ("broad_domain", None),
+            ("area", None),
+            ("specific_skill", None),
+            ("sim_year", 2030),
+            ("timeline_year", None),
+            ("wizard_complete", False),
+        ):
+            st_obj.session_state.setdefault(key, default)
+
+    def _update_fl_trace(st_obj: Any, **fields: Any) -> None:
+        pass
+
+    def render_wizard_trace(st_obj: Any) -> None:
+        pass
+
+    def select_domain(st_obj: Any, domain: str) -> None:
+        prev = st_obj.session_state.get("broad_domain")
+        st_obj.session_state["broad_domain"] = domain
+        if prev != domain:
+            st_obj.session_state["area"] = None
+            st_obj.session_state["specific_skill"] = None
+            st_obj.session_state["timeline_year"] = None
+
+    init_developer_mode_from_query = lambda _st: None  # type: ignore[assignment,misc]
+    ensure_wizard_session_keys(st)
+
 _fl_boot.bootstrap_persistence(st)
+try:
+    _update_fl_trace(st, restore_ran=bool(st.session_state.get("_suite_disk_state_restored::future_lens")))
+except Exception:
+    pass
+
 if not _fl_boot.PERSISTENCE_OK:
-    for key, default in (
-        ("broad_domain", None),
-        ("area", None),
-        ("specific_skill", None),
-        ("sim_year", 2030),
-        ("timeline_year", None),
-        ("wizard_complete", False),
-    ):
-        if key not in st.session_state:
-            st.session_state[key] = default
+    ensure_wizard_session_keys(st)  # type: ignore[misc]
     if _fl_boot.BOOT_ERROR and st.session_state.get("developer_mode"):
         st.sidebar.warning(f"Persistence unavailable: {_fl_boot.BOOT_ERROR}")
 
@@ -189,21 +233,24 @@ def _render_selection_wizard() -> bool:
     # Step 1 — Domain (visual grid)
     st.markdown('<span class="fl-step">STEP 1</span> **Choose a broad domain**', unsafe_allow_html=True)
     domain_cols = st.columns(4)
-    prev_domain = st.session_state.broad_domain
     for i, domain in enumerate(BROAD_DOMAINS):
         with domain_cols[i % 4]:
             icon = DOMAIN_ICONS.get(domain, "🔮")
-            if st.button(f"{icon} {domain}", key=f"domain_{domain}", use_container_width=True):
-                st.session_state.broad_domain = domain
-                if prev_domain != domain:
-                    st.session_state.area = None
-                    st.session_state.specific_skill = None
-                    st.session_state.timeline_year = None
-                st.rerun()
+            st.button(
+                f"{icon} {domain}",
+                key=f"domain_{domain}",
+                use_container_width=True,
+                on_click=select_domain,
+                args=(st, domain),
+            )
 
-    domain = st.session_state.broad_domain
+    domain = st.session_state.get("broad_domain")
     if not domain:
         st.info("Select a domain above to continue.")
+        try:
+            _update_fl_trace(st, wizard_block_reason="Select a domain above to continue.")
+        except Exception:
+            pass
         return False
 
     # Step 2 — Area
@@ -496,12 +543,12 @@ with st.sidebar:
     st.markdown("## 🔮 Future Lens")
     st.caption("Domain → Area → Skill")
     st.divider()
-    if st.session_state.broad_domain:
+    if st.session_state.get("broad_domain"):
         st.markdown(f"**Domain:** {DOMAIN_ICONS.get(st.session_state.broad_domain, '')} {st.session_state.broad_domain}")
     else:
         st.markdown("**Domain:** —")
-    st.markdown(f"**Area:** {st.session_state.area or '—'}")
-    st.markdown(f"**Skill:** {st.session_state.specific_skill or '—'}")
+    st.markdown(f"**Area:** {st.session_state.get('area') or '—'}")
+    st.markdown(f"**Skill:** {st.session_state.get('specific_skill') or '—'}")
     st.divider()
     st.markdown("**How to use**")
     st.markdown(
@@ -516,7 +563,13 @@ with st.sidebar:
             "future_lens",
             on_reset=_fl_boot.default_reset_future_lens_session,
             help_text="Clears wizard progress, local disk, and cloud session for Future Lens.",
+            in_sidebar=True,
         )
+    except Exception as exc:
+        if st.session_state.get("developer_mode"):
+            st.sidebar.caption(f"Saved session controls unavailable: {exc}")
+    try:
+        render_wizard_trace(st)
     except Exception:
         pass
 

@@ -68,12 +68,13 @@ except Exception as exc:
     BOOT_ERROR = f"{type(exc).__name__}: {exc}"
 
 
-def bootstrap_persistence(st: Any) -> None:
+def bootstrap_persistence(st: Any) -> bool:
     """Restore disk/cloud state and apply resume query params once."""
+    restored = False
     if not PERSISTENCE_OK:
-        return
+        return False
     try:
-        restore_future_lens_state_once(st)
+        restored = bool(restore_future_lens_state_once(st))
         apply_future_lens_session_defaults_if_missing(st)
         apply_future_lens_view_from_restore(st)
     except Exception:
@@ -83,3 +84,4 @@ def bootstrap_persistence(st: Any) -> None:
         apply_suite_fl_sim(st)
     except Exception:
         pass
+    return restored
