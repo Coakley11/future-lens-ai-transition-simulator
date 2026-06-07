@@ -34,6 +34,53 @@ _DEFAULTS: tuple[tuple[str, Any], ...] = (
 )
 
 
+FL_ACTIVE_TAB_KEY = "_fl_active_tab_label"
+
+FL_TAB_LABELS: tuple[str, ...] = (
+    "📅 Evolution",
+    "🔍 Drivers",
+    "💡 Future Advice",
+    "🚀 Simulation",
+)
+
+FL_VIEW_TO_TAB_LABEL: dict[str, str] = {
+    "timeline": "📅 Evolution",
+    "drivers": "🔍 Drivers",
+    "advice": "💡 Future Advice",
+    "simulation": "🚀 Simulation",
+    "skills": "💡 Future Advice",
+}
+
+FL_TAB_LABEL_TO_VIEW: dict[str, str] = {
+    "📅 Evolution": "timeline",
+    "🔍 Drivers": "drivers",
+    "💡 Future Advice": "advice",
+    "🚀 Simulation": "simulation",
+}
+
+
+def apply_future_lens_view_from_restore(st: Any) -> None:
+    """Seed active tab from persisted ``_suite_fl_view`` before widgets render."""
+    ss = st.session_state
+    current = ss.get(FL_ACTIVE_TAB_KEY)
+    if current in FL_TAB_LABELS:
+        view = FL_TAB_LABEL_TO_VIEW.get(str(current))
+        if view:
+            ss["_suite_fl_view"] = view
+        return
+    view = str(ss.get("_suite_fl_view") or "").strip()
+    label = FL_VIEW_TO_TAB_LABEL.get(view, FL_TAB_LABELS[0])
+    ss[FL_ACTIVE_TAB_KEY] = label
+    ss["_suite_fl_view"] = FL_TAB_LABEL_TO_VIEW.get(label, "timeline")
+
+
+def sync_future_lens_view_after_tab(st: Any, tab_label: str) -> None:
+    """Keep ``_suite_fl_view`` aligned with the selected tab for autosave."""
+    view = FL_TAB_LABEL_TO_VIEW.get(tab_label)
+    if view:
+        st.session_state["_suite_fl_view"] = view
+
+
 def _apply_suite_fl_sim(st: Any) -> None:
     """Map resume/deep-link simulation hint onto wizard fields when missing."""
     sim = str(st.session_state.get("_suite_fl_sim") or "").strip()
@@ -71,6 +118,7 @@ def apply_future_lens_disk_state(st: Any, state: dict[str, Any]) -> None:
     for key, val in state.items():
         st.session_state[key] = copy.deepcopy(val)
     _apply_suite_fl_sim(st)
+    apply_future_lens_view_from_restore(st)
 
 
 def apply_future_lens_session_defaults(st: Any) -> None:
@@ -81,6 +129,7 @@ def apply_future_lens_session_defaults(st: Any) -> None:
     for key, default in _DEFAULTS:
         ss[key] = default
     ss.pop("future_project", None)
+    ss.pop(FL_ACTIVE_TAB_KEY, None)
 
 
 def apply_future_lens_session_defaults_if_missing(st: Any) -> None:

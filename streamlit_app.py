@@ -33,6 +33,9 @@ try:
 
     restore_future_lens_state_once(st)
     apply_future_lens_session_defaults_if_missing(st)
+    from future_lens_persistent_state import apply_future_lens_view_from_restore
+
+    apply_future_lens_view_from_restore(st)
 except Exception:
     for key, default in (
         ("broad_domain", None),
@@ -517,16 +520,29 @@ if _render_selection_wizard():
         st.session_state.specific_skill,
     )
     st.divider()
-    tab_timeline, tab_drivers, tab_advice, tab_sim = st.tabs(
-        ["📅 Evolution", "🔍 Drivers", "💡 Future Advice", "🚀 Simulation"]
+    from future_lens_persistent_state import (
+        FL_ACTIVE_TAB_KEY,
+        FL_TAB_LABELS,
+        apply_future_lens_view_from_restore,
+        sync_future_lens_view_after_tab,
     )
-    with tab_timeline:
+
+    apply_future_lens_view_from_restore(st)
+    tab_label = st.radio(
+        "Section",
+        list(FL_TAB_LABELS),
+        horizontal=True,
+        key=FL_ACTIVE_TAB_KEY,
+        label_visibility="collapsed",
+    )
+    sync_future_lens_view_after_tab(st, tab_label)
+    if tab_label == FL_TAB_LABELS[0]:
         _render_timeline(profile)
-    with tab_drivers:
+    elif tab_label == FL_TAB_LABELS[1]:
         _render_drivers(profile)
-    with tab_advice:
+    elif tab_label == FL_TAB_LABELS[2]:
         _render_future_advice(profile)
-    with tab_sim:
+    else:
         _render_simulation_mode(profile)
 
 try:
