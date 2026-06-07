@@ -26,9 +26,32 @@ st.set_page_config(
 )
 
 try:
+    from future_lens_persistent_state import (
+        apply_future_lens_session_defaults_if_missing,
+        restore_future_lens_state_once,
+    )
+
+    restore_future_lens_state_once(st)
+    apply_future_lens_session_defaults_if_missing(st)
+except Exception:
+    for key, default in (
+        ("broad_domain", None),
+        ("area", None),
+        ("specific_skill", None),
+        ("sim_year", 2030),
+        ("timeline_year", None),
+        ("wizard_complete", False),
+    ):
+        if key not in st.session_state:
+            st.session_state[key] = default
+
+try:
     from suite_resume_launch import apply_suite_resume_launch
 
     apply_suite_resume_launch(st, "future_lens")
+    from future_lens_persistent_state import _apply_suite_fl_sim
+
+    _apply_suite_fl_sim(st)
 except Exception:
     pass
 
@@ -125,17 +148,6 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-
-for key, default in (
-    ("broad_domain", None),
-    ("area", None),
-    ("specific_skill", None),
-    ("sim_year", 2030),
-    ("timeline_year", None),
-    ("wizard_complete", False),
-):
-    if key not in st.session_state:
-        st.session_state[key] = default
 
 
 def _render_hero() -> None:
@@ -481,13 +493,9 @@ with st.sidebar:
         "1. Pick a domain\n2. Narrow to an area\n3. Choose one skill\n4. Explore the timeline\n5. Read the advice\n6. Simulate the future"
     )
     try:
-        from future_lens_persistent_state import (
-            default_reset_future_lens_session,
-            restore_future_lens_state_once,
-        )
+        from future_lens_persistent_state import default_reset_future_lens_session
         from suite_user_persistence import render_reset_controls, show_persistence_messages
 
-        restore_future_lens_state_once(st)
         show_persistence_messages(st)
         render_reset_controls(
             st,
