@@ -28,13 +28,24 @@ def init_developer_mode_from_query(st: Any) -> None:
             if isinstance(raw, list):
                 raw = raw[0] if raw else ""
             if str(raw or "").strip().lower() in {"1", "true", "yes", "on"}:
-                st.session_state["developer_mode"] = True
+                try:
+                    from suite_workspace import is_developer_workspace
+
+                    if is_developer_workspace(st=st):
+                        st.session_state["developer_mode"] = True
+                except ImportError:
+                    st.session_state["developer_mode"] = True
         except Exception:
             pass
 
 
 def developer_mode(st: Any) -> bool:
-    return bool(st.session_state.get("developer_mode"))
+    try:
+        from suite_workspace import can_show_developer_tools
+
+        return can_show_developer_tools(st=st)
+    except ImportError:
+        return bool(st.session_state.get("developer_mode"))
 
 
 def ensure_wizard_session_keys(st: Any) -> None:
