@@ -352,7 +352,10 @@ def _render_timeline(profile) -> None:
             pt = next(p for p in profile.timeline if p.year == y)
             label = f"{y}{'  🔮' if pt.is_forecast else ''}"
             if st.button(label, key=f"year_{y}", use_container_width=True):
-                st.session_state.timeline_year = y
+                try:
+                    _fl_boot.persist_future_lens_decade_change(st, timeline_year=y)
+                except Exception:
+                    st.session_state.timeline_year = y
                 try:
                     from future_lens_activity import log_technology_timeline_review
 
@@ -499,7 +502,10 @@ def _render_simulation_mode(profile) -> None:
                 use_container_width=True,
                 type="primary" if active else "secondary",
             ):
-                st.session_state.sim_year = y
+                try:
+                    _fl_boot.persist_future_lens_decade_change(st, sim_year=y)
+                except Exception:
+                    st.session_state.sim_year = y
                 try:
                     from future_lens_activity import log_simulation_completed
 

@@ -262,8 +262,6 @@ _FORCE_SAVE_CLOUD_REASONS = frozenset({
     "music_coach_send",
     "song_edit",
     "practice_edit",
-    "team_change",
-    "nba_settings_change",
 })
 
 
@@ -793,6 +791,7 @@ def sync_workspace_protocol(
             disk_state=disk_state, disk_ts=disk_ts, winner=picked.source,
             reason="already synced", applied=False,
         )
+        _mark_workspace_sync_skipped(st, app_id, skip_reason)
         _record_startup_restore_diagnostics(
             st, app_id,
             cloud_state=cloud_state, cloud_ts=cloud_ts,
@@ -1355,8 +1354,8 @@ def force_autosave(
             "insight_hydrate",
             "applied_math_send",
             "music_coach_send",
+            "decade_change",
             "team_change",
-            "nba_settings_change",
         )
         if st.session_state.get(block_key) and not bypass_block:
             st.session_state["_suite_autosave_blocked_after_restore"] = True

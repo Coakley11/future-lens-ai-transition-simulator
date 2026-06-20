@@ -38,6 +38,7 @@ autosave_future_lens_state: Callable[[Any], None] = _noop
 default_reset_future_lens_session: Callable[[Any], None] = _noop
 apply_suite_fl_sim: Callable[[Any], None] = _noop
 apply_suite_resume_launch: Callable[..., bool] = lambda *_a, **_k: False
+persist_future_lens_decade_change: Callable[..., bool] = lambda *_a, **_k: False
 
 
 try:
@@ -49,7 +50,9 @@ try:
         apply_future_lens_view_from_restore as _apply_view,
         autosave_future_lens_state as _autosave,
         default_reset_future_lens_session as _default_reset,
+        persist_future_lens_decade_change as _persist_decade_change,
         prepare_future_lens_workspace as _prepare_workspace,
+        restore_future_lens_disk_shell as _restore_disk_shell,
         restore_future_lens_state_once as _restore_once,
         sync_future_lens_view_after_tab as _sync_tab,
     )
@@ -83,7 +86,14 @@ def bootstrap_persistence(st: Any) -> bool:
     except Exception:
         pass
     try:
-        restored = bool(prepare_future_lens_workspace(st))
+        from future_lens_persistent_state import _WORKSPACE_PREPARED_KEY
+
+        _restore_disk_shell(st)
+        if not st.session_state.get(_WORKSPACE_PREPARED_KEY):
+            restored = bool(prepare_future_lens_workspace(st))
+            st.session_state[_WORKSPACE_PREPARED_KEY] = True
+        else:
+            restored = bool(st.session_state.get("_future_lens_disk_shell_had_state"))
         apply_future_lens_session_defaults_if_missing(st)
         apply_future_lens_view_from_restore(st)
     except Exception:

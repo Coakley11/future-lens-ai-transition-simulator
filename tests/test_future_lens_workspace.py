@@ -11,7 +11,9 @@ from unittest.mock import patch
 from future_lens_persistent_state import (
     apply_future_lens_disk_state,
     build_future_lens_disk_state,
+    persist_future_lens_decade_change,
     prepare_future_lens_workspace,
+    restore_future_lens_disk_shell,
 )
 from suite_user_persistence import save_user_state, state_file_path
 from suite_workspace import scoped_cloud_app_id
@@ -118,6 +120,90 @@ class TestFutureLensWorkspaceIsolation(unittest.TestCase):
                 )
         metrics = mock_record.call_args.kwargs.get("metrics") or mock_record.call_args[1].get("metrics")
         self.assertEqual(metrics.get("workspace_id"), "ariel")
+
+    def test_sim_year_persists_per_workspace_after_restore(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            data = Path(tmp)
+            with patch("suite_workspace.DATA_DIR", data), patch("suite_user_persistence.DATA_DIR", data):
+                save_user_state(
+                    "future_lens",
+                    {
+                        "broad_domain": "Technology",
+                        "area": "Computer programming",
+                        "specific_skill": "Debugging",
+                        "sim_year": 2040,
+                    },
+                    workspace_id="daniel",
+                )
+                save_user_state(
+                    "future_lens",
+                    {
+                        "broad_domain": "Finance",
+                        "area": "Personal investing",
+                        "specific_skill": "Spreadsheet modeling",
+                        "sim_year": 2050,
+                    },
+                    workspace_id="ariel",
+                )
+
+                daniel_ss = _FakeSessionState({})
+                daniel_st = _FakeSt(daniel_ss)
+                with patch("suite_workspace.resolve_workspace_id", return_value="daniel"):
+                    restore_future_lens_disk_shell(daniel_st)
+                self.assertEqual(daniel_ss.get("sim_year"), 2040)
+
+                ariel_ss = _FakeSessionState({})
+                ariel_st = _FakeSt(ariel_ss)
+                with patch("suite_workspace.resolve_workspace_id", return_value="ariel"):
+                    restore_future_lens_disk_shell(ariel_st)
+                self.assertEqual(ariel_ss.get("sim_year"), 2050)
+
+    def test_persist_decade_change_writes_workspace_disk(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            data = Path(tmp)
+            with patch("suite_workspace.DATA_DIR", data), patch("suite_user_persistence.DATA_DIR", data):
+                ss = _FakeSessionState(
+                    {
+                        "broad_domain": "Technology",
+                        "area": "Computer programming",
+                        "specific_skill": "Debugging",
+                        "sim_year": 2030,
+                    }
+                )
+                st = _FakeSt(ss)
+                with patch("suite_workspace.resolve_workspace_id", return_value="ariel"):
+                    saved = persist_future_lens_decade_change(st, sim_year=2050)
+                self.assertTrue(saved)
+                self.assertEqual(ss.get("sim_year"), 2050)
+                blob = json.loads(state_file_path("future_lens", "ariel").read_text(encoding="utf-8"))
+                self.assertEqual(blob["state"]["sim_year"], 2050)
+
+    def test_bootstrap_does_not_clobber_sim_year_on_rerun(self) -> None:
+        import future_lens_boot as boot
+
+        with tempfile.TemporaryDirectory() as tmp:
+            data = Path(tmp)
+            with patch("suite_workspace.DATA_DIR", data), patch("suite_user_persistence.DATA_DIR", data):
+                save_user_state(
+                    "future_lens",
+                    {
+                        "broad_domain": "Technology",
+                        "area": "Computer programming",
+                        "specific_skill": "Debugging",
+                        "sim_year": 2030,
+                    },
+                    workspace_id="daniel",
+                )
+                ss = _FakeSessionState({})
+                st = _FakeSt(ss)
+                with patch("suite_workspace.resolve_workspace_id", return_value="daniel"), patch(
+                    "suite_workspace.init_suite_workspace"
+                ), patch("suite_resume_launch.apply_suite_resume_launch", return_value=False):
+                    boot.bootstrap_persistence(st)
+                    self.assertEqual(ss.get("sim_year"), 2030)
+                    ss["sim_year"] = 2040
+                    boot.bootstrap_persistence(st)
+                self.assertEqual(ss.get("sim_year"), 2040)
 
 
 if __name__ == "__main__":

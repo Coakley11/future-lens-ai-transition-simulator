@@ -9,6 +9,7 @@ from suite_user_persistence import autosave_if_changed, finalize_suite_reset, sy
 
 APP_ID = "future_lens"
 _DISK_SHELL_KEY = "_future_lens_disk_shell_applied"
+_WORKSPACE_PREPARED_KEY = "_future_lens_workspace_prepared"
 
 _SESSION_KEYS = (
     "broad_domain",
@@ -150,7 +151,12 @@ def apply_future_lens_session_defaults_if_missing(st: Any) -> None:
 
 def clear_future_lens_startup_restore_flags(st: Any) -> None:
     """Reset shell restore flags when workspace profile changes."""
-    for key in (_DISK_SHELL_KEY, "_future_lens_disk_shell_had_state", FL_ACTIVE_TAB_KEY):
+    for key in (
+        _DISK_SHELL_KEY,
+        "_future_lens_disk_shell_had_state",
+        _WORKSPACE_PREPARED_KEY,
+        FL_ACTIVE_TAB_KEY,
+    ):
         st.session_state.pop(key, None)
 
 
@@ -190,6 +196,29 @@ def restore_future_lens_state_once(st: Any) -> bool:
 
 def autosave_future_lens_state(st: Any) -> dict[str, Any]:
     return autosave_if_changed(st, APP_ID, build_state=build_future_lens_disk_state)
+
+
+def persist_future_lens_decade_change(
+    st: Any,
+    *,
+    sim_year: int | None = None,
+    timeline_year: int | None = None,
+) -> bool:
+    """Persist simulation/timeline decade immediately for the active workspace."""
+    ss = st.session_state
+    if sim_year is not None:
+        ss["sim_year"] = sim_year
+    if timeline_year is not None:
+        ss["timeline_year"] = timeline_year
+    from suite_user_persistence import _local_dirty_key, force_autosave
+
+    ss[_local_dirty_key(APP_ID)] = True
+    return force_autosave(
+        st,
+        APP_ID,
+        build_state=build_future_lens_disk_state,
+        reason="decade_change",
+    )
 
 
 def default_reset_future_lens_session(st: Any) -> None:
