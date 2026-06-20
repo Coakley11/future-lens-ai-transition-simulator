@@ -632,6 +632,9 @@ if _render_selection_wizard():
 
 try:
     _fl_boot.autosave_future_lens_state(st)
+    from suite_user_persistence import clear_workspace_autosave_block
+
+    clear_workspace_autosave_block(st, "future_lens")
 except Exception:
     pass
 

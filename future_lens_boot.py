@@ -31,6 +31,7 @@ def _default_apply_view(st: Any) -> None:
 
 apply_future_lens_session_defaults_if_missing: Callable[[Any], None] = _noop
 restore_future_lens_state_once: Callable[[Any], bool] = _noop_restore
+prepare_future_lens_workspace: Callable[[Any], bool] = _noop_restore
 apply_future_lens_view_from_restore: Callable[[Any], None] = _default_apply_view
 sync_future_lens_view_after_tab: Callable[[Any, str], None] = _noop
 autosave_future_lens_state: Callable[[Any], None] = _noop
@@ -48,6 +49,7 @@ try:
         apply_future_lens_view_from_restore as _apply_view,
         autosave_future_lens_state as _autosave,
         default_reset_future_lens_session as _default_reset,
+        prepare_future_lens_workspace as _prepare_workspace,
         restore_future_lens_state_once as _restore_once,
         sync_future_lens_view_after_tab as _sync_tab,
     )
@@ -57,6 +59,7 @@ try:
     FL_TAB_LABELS = _FL_LABELS
     apply_future_lens_session_defaults_if_missing = _apply_defaults_if_missing
     restore_future_lens_state_once = _restore_once
+    prepare_future_lens_workspace = _prepare_workspace
     apply_future_lens_view_from_restore = _apply_view
     sync_future_lens_view_after_tab = _sync_tab
     autosave_future_lens_state = _autosave
@@ -69,12 +72,18 @@ except Exception as exc:
 
 
 def bootstrap_persistence(st: Any) -> bool:
-    """Restore disk/cloud state and apply resume query params once."""
+    """Initialize workspace profile, restore scoped state, then resume params."""
     restored = False
     if not PERSISTENCE_OK:
         return False
     try:
-        restored = bool(restore_future_lens_state_once(st))
+        from suite_workspace import init_suite_workspace
+
+        init_suite_workspace(st)
+    except Exception:
+        pass
+    try:
+        restored = bool(prepare_future_lens_workspace(st))
         apply_future_lens_session_defaults_if_missing(st)
         apply_future_lens_view_from_restore(st)
     except Exception:

@@ -5,9 +5,10 @@ from __future__ import annotations
 import copy
 from typing import Any
 
-from suite_user_persistence import autosave_if_changed, finalize_suite_reset, restore_once
+from suite_user_persistence import autosave_if_changed, finalize_suite_reset, sync_workspace_protocol
 
 APP_ID = "future_lens"
+_DISK_SHELL_KEY = "_future_lens_disk_shell_applied"
 
 _SESSION_KEYS = (
     "broad_domain",
@@ -147,12 +148,44 @@ def apply_future_lens_session_defaults_if_missing(st: Any) -> None:
             ss[key] = default
 
 
-def restore_future_lens_state_once(st: Any) -> bool:
-    return restore_once(
+def clear_future_lens_startup_restore_flags(st: Any) -> None:
+    """Reset shell restore flags when workspace profile changes."""
+    for key in (_DISK_SHELL_KEY, "_future_lens_disk_shell_had_state", FL_ACTIVE_TAB_KEY):
+        st.session_state.pop(key, None)
+
+
+def restore_future_lens_disk_shell(st: Any) -> bool:
+    """Fast disk-only restore — once per session before widgets."""
+    if st.session_state.get(_DISK_SHELL_KEY):
+        return bool(st.session_state.get("_future_lens_disk_shell_had_state"))
+    try:
+        from suite_user_persistence import _load_raw
+
+        disk_state, _, _ = _load_raw(APP_ID)
+    except Exception:
+        st.session_state[_DISK_SHELL_KEY] = True
+        st.session_state["_future_lens_disk_shell_had_state"] = False
+        return False
+    if disk_state:
+        apply_future_lens_disk_state(st, disk_state)
+    st.session_state[_DISK_SHELL_KEY] = True
+    st.session_state["_future_lens_disk_shell_had_state"] = bool(disk_state)
+    return bool(disk_state)
+
+
+def prepare_future_lens_workspace(st: Any, *, cloud_first: bool = True) -> bool:
+    """Authoritative workspace-scoped disk + cloud sync before sidebar widgets."""
+    return sync_workspace_protocol(
         st,
         APP_ID,
         apply_state=lambda st_obj, s: apply_future_lens_disk_state(st_obj, s),
+        cloud_first=cloud_first,
     )
+
+
+def restore_future_lens_state_once(st: Any) -> bool:
+    """Backward-compatible alias — prefer ``prepare_future_lens_workspace()`` at startup."""
+    return prepare_future_lens_workspace(st)
 
 
 def autosave_future_lens_state(st: Any) -> dict[str, Any]:

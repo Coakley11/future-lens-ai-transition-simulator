@@ -47,21 +47,30 @@ def finalize_suite_resume_launch(
         _finalize_music_resume(st, song_picker_catalog, song_library)
 
     st.session_state[done_flag] = True
+    st.session_state.pop(launch_flag, None)
     return True
 
 
 def apply_suite_resume_launch(st: Any, app_key: str) -> bool:
     """
-    Map ?suite_resume= & ?suite_page= into session state (once per session).
-    Returns True when query params were applied.
+    Initialize workspace profile and map ?suite_resume= & ?suite_page= into session state.
+    Returns True when resume query params were applied.
     """
+    try:
+        from suite_workspace import init_suite_workspace
+
+        init_suite_workspace(st)
+    except ImportError:
+        pass
+
     flag = f"_suite_resume_launch_{app_key}"
     if st.session_state.get(flag):
         return False
 
     resume = _qp_get(st, "suite_resume")
     page = _qp_get(st, "suite_page")
-    if not resume and not page:
+    ami_insight = _qp_get(st, "suite_ami_insight")
+    if not resume and not page and not ami_insight:
         return False
 
     key = str(app_key or "").strip()
@@ -70,12 +79,16 @@ def apply_suite_resume_launch(st: Any, app_key: str) -> bool:
 
     if key == "music":
         _apply_music(st, resume, page)
+        _apply_ami_insight(st, "music")
     elif key == "baseball":
         _apply_baseball(st, resume, page)
+        _apply_ami_insight(st, "baseball")
     elif key == "nba":
         _apply_nba(st, resume, page)
+        _apply_ami_insight(st, "nba")
     elif key == "investment":
         _apply_investment(st, resume, page)
+        _apply_ami_insight(st, "investment")
     elif key == "future_lens":
         _apply_future_lens(st, resume, page)
     elif key == "applied_intelligence":
@@ -165,7 +178,7 @@ def _apply_music(st: Any, resume: str, page: str) -> None:
     elif target.lower() == "backing track studio":
         target = "backing"
     try:
-        from studio_page_state import navigate_studio_page
+        from studio_nav_history import navigate_studio_page
 
         navigate_studio_page(st.session_state, target)
     except Exception:
@@ -197,8 +210,23 @@ def _apply_baseball(st: Any, resume: str, page: str) -> None:
     if trend_player:
         st.session_state["single_trend_dashboard_player"] = trend_player
         st.session_state["pending_trend_player"] = trend_player
+    trend_players_raw = _qp_get(st, "suite_trend_players")
+    if trend_players_raw:
+        labels = [x.strip() for x in trend_players_raw.split("|") if x.strip()]
+        if labels:
+            st.session_state["pending_trend_players"] = labels
+            st.session_state["trend_force_multi_labels"] = labels[:3]
+            st.session_state["trend_players_multi"] = labels[:3]
     if target_page:
-        st.session_state["_navigate_to_page"] = target_page
+        try:
+            from applied_math_return_insight import _should_apply_ami_return_navigation
+
+            if _should_apply_ami_return_navigation(st, "baseball", target_page):
+                st.session_state["_navigate_to_page"] = target_page
+                st.session_state["ami_return_forced_page"] = target_page
+                st.session_state["active_page_source"] = "suite_resume_launch"
+        except Exception:
+            st.session_state["_navigate_to_page"] = target_page
 
 
 def _apply_nba(st: Any, resume: str, page: str) -> None:
@@ -276,9 +304,49 @@ def _apply_future_lens(st: Any, resume: str, page: str) -> None:
         st.session_state["future_project"] = f"{domain} / {area}"
 
 
+def _apply_ami_insight(st: Any, app_key: str) -> None:
+    try:
+        from applied_math_return_insight import apply_ami_insight_from_query
+
+        apply_ami_insight_from_query(st, app_key)
+    except Exception:
+        pass
+
+
+def finalize_ami_return_restore(st: Any, app_key: str) -> bool:
+    """Call after page navigation is scheduled — commits widget pending restore."""
+    try:
+        from applied_math_return_insight import commit_ami_return_page_restore
+
+        return commit_ami_return_page_restore(st, app_key)
+    except Exception:
+        return False
+
+
 def _apply_applied_intelligence(st: Any, page: str) -> None:
     lesson = _qp_get(st, "suite_lesson")
     if lesson:
         st.session_state["_suite_ai_lesson"] = lesson
     if page:
         st.session_state["_suite_ai_page"] = page
+    try:
+        from suite_analytical_question import hydrate_applied_intelligence_session
+
+        hydrate_applied_intelligence_session(st)
+    except Exception:
+        q = _qp_get(st, "suite_ai_question")
+        if q:
+            st.session_state["_suite_ai_question"] = q
+            st.session_state["ps_library_problem"] = q
+        ctx_raw = _qp_get(st, "suite_ai_context")
+        if ctx_raw:
+            st.session_state["_suite_ai_context"] = ctx_raw
+        for qp, key in (
+            ("suite_ai_source_app", "_suite_ai_source_app"),
+            ("suite_ai_source_page", "_suite_ai_source_page"),
+            ("suite_ai_area", "_suite_ai_area"),
+            ("suite_ai_question_id", "_suite_ai_question_id"),
+        ):
+            val = _qp_get(st, qp)
+            if val:
+                st.session_state[key] = val

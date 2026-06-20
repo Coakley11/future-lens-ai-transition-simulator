@@ -1,10 +1,17 @@
-"""
-Command Center activity hooks — completed simulations and reviews only.
-"""
+"""Future Lens activity hooks — completed simulations and reviews only."""
 
 from __future__ import annotations
 
 from typing import Any
+
+
+def _active_workspace_id() -> str:
+    try:
+        from suite_workspace import get_active_workspace_id
+
+        return get_active_workspace_id()
+    except Exception:
+        return "daniel"
 
 
 def _record(
@@ -20,16 +27,18 @@ def _record(
     try:
         from suite_activity_client import record_activity
 
+        payload = dict(metrics or {})
+        payload.setdefault("workspace_id", _active_workspace_id())
         record_activity(
             "future_lens",
             event,
             page=page or "Future Lens",
-            metrics=metrics or {},
+            metrics=payload,
             summary=summary,
             resume_key=resume_key,
             resume_title=resume_title,
             resume_subtitle=resume_subtitle,
-            local_state=metrics,
+            local_state=payload,
         )
     except Exception:
         pass
