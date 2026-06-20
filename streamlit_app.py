@@ -336,6 +336,11 @@ def _render_timeline(profile) -> None:
     years = [p.year for p in profile.timeline]
     if st.session_state.timeline_year not in years:
         st.session_state.timeline_year = years[0]
+    _fl_boot.record_decade_render_snapshot(
+        st,
+        timeline_year=st.session_state.timeline_year,
+        surface="timeline",
+    )
 
     nav_html = '<div class="fl-timeline-nav">'
     for y in years:
@@ -352,10 +357,11 @@ def _render_timeline(profile) -> None:
             pt = next(p for p in profile.timeline if p.year == y)
             label = f"{y}{'  🔮' if pt.is_forecast else ''}"
             if st.button(label, key=f"year_{y}", use_container_width=True):
-                try:
-                    _fl_boot.persist_future_lens_decade_change(st, timeline_year=y)
-                except Exception:
-                    st.session_state.timeline_year = y
+                _fl_boot.apply_future_lens_decade_selection(
+                    st,
+                    timeline_year=y,
+                    source=f"timeline_button_{y}",
+                )
                 try:
                     from future_lens_activity import log_technology_timeline_review
 
@@ -502,10 +508,11 @@ def _render_simulation_mode(profile) -> None:
                 use_container_width=True,
                 type="primary" if active else "secondary",
             ):
-                try:
-                    _fl_boot.persist_future_lens_decade_change(st, sim_year=y)
-                except Exception:
-                    st.session_state.sim_year = y
+                _fl_boot.apply_future_lens_decade_selection(
+                    st,
+                    sim_year=y,
+                    source=f"sim_button_{y}",
+                )
                 try:
                     from future_lens_activity import log_simulation_completed
 
@@ -525,6 +532,7 @@ def _render_simulation_mode(profile) -> None:
                 st.rerun()
 
     year = st.session_state.sim_year
+    _fl_boot.record_decade_render_snapshot(st, sim_year=year, surface="simulation")
     scene = profile.simulation[year]
     progress = min(1.0, (year - 2020) / 30)
     st.progress(progress, text=f"Future immersion · {year} · {int(progress * 100)}% toward 2050")

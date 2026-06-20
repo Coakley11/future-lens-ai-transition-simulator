@@ -198,6 +198,121 @@ def autosave_future_lens_state(st: Any) -> dict[str, Any]:
     return autosave_if_changed(st, APP_ID, build_state=build_future_lens_disk_state)
 
 
+_DECADE_DIAG_KEY = "_fl_decade_diagnostics"
+
+
+def _developer_decade_diagnostics_enabled(st: Any) -> bool:
+    try:
+        from suite_workspace import is_developer_workspace
+
+        return is_developer_workspace(st=st)
+    except ImportError:
+        return bool(st.session_state.get("developer_mode"))
+
+
+def _read_disk_decade_values() -> dict[str, Any]:
+    try:
+        from suite_user_persistence import _load_raw
+
+        state, _, _ = _load_raw(APP_ID)
+        if not isinstance(state, dict):
+            return {}
+        return {
+            "sim_year": state.get("sim_year"),
+            "timeline_year": state.get("timeline_year"),
+        }
+    except Exception:
+        return {}
+
+
+def record_decade_render_snapshot(
+    st: Any,
+    *,
+    sim_year: int | None = None,
+    timeline_year: int | None = None,
+    surface: str = "",
+) -> None:
+    """Record the values actually used for rendering (Daniel-only diagnostics)."""
+    if not _developer_decade_diagnostics_enabled(st):
+        return
+    trace = st.session_state.setdefault(_DECADE_DIAG_KEY, {})
+    if sim_year is not None:
+        trace["render_sim_year"] = sim_year
+    if timeline_year is not None:
+        trace["render_timeline_year"] = timeline_year
+    if surface:
+        trace["render_surface"] = surface
+
+
+def record_decade_diagnostic(st: Any, **fields: Any) -> None:
+    if not _developer_decade_diagnostics_enabled(st):
+        return
+    trace = st.session_state.setdefault(_DECADE_DIAG_KEY, {})
+    trace.update(fields)
+
+
+def apply_future_lens_decade_selection(
+    st: Any,
+    *,
+    sim_year: int | None = None,
+    timeline_year: int | None = None,
+    source: str = "click",
+) -> dict[str, Any]:
+    """
+    Update rendered decade state immediately, then persist to workspace disk.
+
+    Simulation tab uses ``sim_year`` (2030/2040/2050). Evolution tab uses ``timeline_year``.
+    """
+    ss = st.session_state
+    clicked = sim_year if sim_year is not None else timeline_year
+    try:
+        from suite_workspace import get_active_workspace_id
+
+        workspace_id = get_active_workspace_id()
+    except Exception:
+        workspace_id = "unknown"
+
+    disk_before = _read_disk_decade_values()
+    record_decade_diagnostic(
+        st,
+        active_workspace_id=workspace_id,
+        clicked_decade=clicked,
+        source=source,
+        sim_year_before=ss.get("sim_year"),
+        timeline_year_before=ss.get("timeline_year"),
+        restored_disk_sim_year=disk_before.get("sim_year"),
+        restored_disk_timeline_year=disk_before.get("timeline_year"),
+    )
+
+    if sim_year is not None:
+        ss["sim_year"] = sim_year
+    if timeline_year is not None:
+        ss["timeline_year"] = timeline_year
+
+    persist_ok = persist_future_lens_decade_change(
+        st,
+        sim_year=sim_year,
+        timeline_year=timeline_year,
+    )
+    disk_after = _read_disk_decade_values()
+    result = {
+        "sim_year": ss.get("sim_year"),
+        "timeline_year": ss.get("timeline_year"),
+        "persist_ok": persist_ok,
+    }
+    record_decade_diagnostic(
+        st,
+        sim_year_after=ss.get("sim_year"),
+        timeline_year_after=ss.get("timeline_year"),
+        saved_disk_sim_year=disk_after.get("sim_year"),
+        saved_disk_timeline_year=disk_after.get("timeline_year"),
+        persist_ok=persist_ok,
+        render_sim_year=ss.get("sim_year"),
+        render_timeline_year=ss.get("timeline_year"),
+    )
+    return result
+
+
 def persist_future_lens_decade_change(
     st: Any,
     *,

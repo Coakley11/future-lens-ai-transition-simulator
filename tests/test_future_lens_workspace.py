@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from future_lens_persistent_state import (
+    apply_future_lens_decade_selection,
     apply_future_lens_disk_state,
     build_future_lens_disk_state,
     persist_future_lens_decade_change,
@@ -204,6 +205,47 @@ class TestFutureLensWorkspaceIsolation(unittest.TestCase):
                     ss["sim_year"] = 2040
                     boot.bootstrap_persistence(st)
                 self.assertEqual(ss.get("sim_year"), 2040)
+
+
+class TestFutureLensDecadeBootWiring(unittest.TestCase):
+    def test_boot_wires_decade_helpers(self) -> None:
+        import future_lens_boot as boot
+
+        self.assertTrue(boot.PERSISTENCE_OK)
+        self.assertEqual(
+            boot.persist_future_lens_decade_change.__name__,
+            "persist_future_lens_decade_change",
+        )
+        self.assertEqual(
+            boot.apply_future_lens_decade_selection.__name__,
+            "apply_future_lens_decade_selection",
+        )
+
+    def test_apply_decade_selection_updates_session_immediately(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            data = Path(tmp)
+            with patch("suite_workspace.DATA_DIR", data), patch("suite_user_persistence.DATA_DIR", data):
+                ss = _FakeSessionState(
+                    {
+                        "broad_domain": "Technology",
+                        "area": "Computer programming",
+                        "specific_skill": "Debugging",
+                        "sim_year": 2030,
+                    }
+                )
+                st = _FakeSt(ss)
+                with patch("suite_workspace.resolve_workspace_id", return_value="daniel"), patch(
+                    "suite_workspace.get_active_workspace_id", return_value="daniel"
+                ):
+                    result = apply_future_lens_decade_selection(
+                        st,
+                        sim_year=2040,
+                        source="test",
+                    )
+                self.assertEqual(result["sim_year"], 2040)
+                self.assertEqual(ss.get("sim_year"), 2040)
+                blob = json.loads(state_file_path("future_lens", "daniel").read_text(encoding="utf-8"))
+                self.assertEqual(blob["state"]["sim_year"], 2040)
 
 
 if __name__ == "__main__":

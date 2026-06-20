@@ -39,6 +39,7 @@ default_reset_future_lens_session: Callable[[Any], None] = _noop
 apply_suite_fl_sim: Callable[[Any], None] = _noop
 apply_suite_resume_launch: Callable[..., bool] = lambda *_a, **_k: False
 persist_future_lens_decade_change: Callable[..., bool] = lambda *_a, **_k: False
+apply_future_lens_decade_selection: Callable[..., dict] = lambda *_a, **_k: {}
 
 
 try:
@@ -50,8 +51,10 @@ try:
         apply_future_lens_view_from_restore as _apply_view,
         autosave_future_lens_state as _autosave,
         default_reset_future_lens_session as _default_reset,
+        apply_future_lens_decade_selection as _apply_decade_selection,
         persist_future_lens_decade_change as _persist_decade_change,
         prepare_future_lens_workspace as _prepare_workspace,
+        record_decade_render_snapshot as _record_decade_render_snapshot,
         restore_future_lens_disk_shell as _restore_disk_shell,
         restore_future_lens_state_once as _restore_once,
         sync_future_lens_view_after_tab as _sync_tab,
@@ -69,6 +72,9 @@ try:
     default_reset_future_lens_session = _default_reset
     apply_suite_fl_sim = _apply_suite_fl_sim
     apply_suite_resume_launch = _apply_resume_launch
+    persist_future_lens_decade_change = _persist_decade_change
+    apply_future_lens_decade_selection = _apply_decade_selection
+    record_decade_render_snapshot = _record_decade_render_snapshot
     PERSISTENCE_OK = True
 except Exception as exc:
     BOOT_ERROR = f"{type(exc).__name__}: {exc}"

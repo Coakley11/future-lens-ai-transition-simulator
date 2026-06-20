@@ -220,10 +220,31 @@ def render_future_lens_developer_diagnostics(st: Any) -> None:
         st.text(f"restored skill: {ops.get('last_restore_skill', '—')}")
         st.text(f"restored timeline_year: {ops.get('last_restore_timeline_year', '—')}")
 
+        decade = ss.get("_fl_decade_diagnostics")
+        if isinstance(decade, dict) and decade:
+            st.markdown("**Decade selector**")
+            st.text(f"active_workspace_id: {decade.get('active_workspace_id', '—')}")
+            st.text(f"clicked decade: {decade.get('clicked_decade', '—')}")
+            st.text(f"sim_year before click: {decade.get('sim_year_before', '—')}")
+            st.text(f"sim_year after click: {decade.get('sim_year_after', '—')}")
+            st.text(f"timeline_year before click: {decade.get('timeline_year_before', '—')}")
+            st.text(f"timeline_year after click: {decade.get('timeline_year_after', '—')}")
+            st.text(f"restored disk sim_year: {decade.get('restored_disk_sim_year', '—')}")
+            st.text(f"restored disk timeline_year: {decade.get('restored_disk_timeline_year', '—')}")
+            st.text(f"saved disk sim_year: {decade.get('saved_disk_sim_year', '—')}")
+            st.text(f"saved disk timeline_year: {decade.get('saved_disk_timeline_year', '—')}")
+            st.text(f"render sim_year: {decade.get('render_sim_year', '—')}")
+            st.text(f"render timeline_year: {decade.get('render_timeline_year', '—')}")
+            st.text(f"render surface: {decade.get('render_surface', '—')}")
+            st.text(f"persist ok: {decade.get('persist_ok', '—')}")
+            if decade.get("persist_error"):
+                st.text(f"persist error: {decade['persist_error']}")
+
         st.markdown("**Final session state**")
         st.text(f"domain: {ss.get('broad_domain')}")
         st.text(f"area: {ss.get('area')}")
         st.text(f"skill: {ss.get('specific_skill')}")
+        st.text(f"sim_year: {ss.get('sim_year')}")
         st.text(f"timeline_year: {ss.get('timeline_year')}")
 
         st.markdown("**Wizard**")
@@ -239,6 +260,14 @@ def render_future_lens_developer_diagnostics(st: Any) -> None:
             import future_lens_boot as boot
 
             st.text(f"persistence boot OK: {boot.PERSISTENCE_OK}")
+            st.text(
+                "decade persist wired: "
+                f"{getattr(boot.persist_future_lens_decade_change, '__name__', type(boot.persist_future_lens_decade_change).__name__)}"
+            )
+            st.text(
+                "decade apply wired: "
+                f"{getattr(boot.apply_future_lens_decade_selection, '__name__', type(boot.apply_future_lens_decade_selection).__name__)}"
+            )
             if boot.BOOT_ERROR:
                 st.text(f"persistence boot error: {boot.BOOT_ERROR}")
         except Exception as exc:
