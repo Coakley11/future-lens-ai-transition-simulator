@@ -28,6 +28,13 @@ st.set_page_config(
 )
 
 try:
+    from suite_app_shell import apply_suite_auth_gate
+
+    apply_suite_auth_gate(st)
+except Exception:
+    pass
+
+try:
     from suite_deploy_probe import init_developer_mode_from_query
 
     init_developer_mode_from_query(st)
