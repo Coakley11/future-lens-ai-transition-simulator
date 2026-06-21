@@ -176,6 +176,12 @@ def record_activity(
 ) -> None:
     global _LAST_RECORD_TRACE
     metrics = metrics or {}
+    try:
+        from suite_workspace import get_active_workspace_id
+
+        metrics.setdefault("workspace_id", get_active_workspace_id())
+    except ImportError:
+        pass
     trace: dict[str, Any] = {
         "app": app,
         "event": event,

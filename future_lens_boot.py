@@ -91,7 +91,13 @@ def bootstrap_persistence(st: Any) -> bool:
         init_suite_workspace(st)
     except Exception:
         pass
-    try:
+
+try:
+    from suite_app_shell import apply_suite_auth_gate
+
+    apply_suite_auth_gate(st)
+except Exception:
+    pass    try:
         from future_lens_persistent_state import _WORKSPACE_PREPARED_KEY
 
         _restore_disk_shell(st)
