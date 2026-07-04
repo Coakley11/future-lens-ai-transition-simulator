@@ -86,9 +86,9 @@ def bootstrap_persistence(st: Any) -> bool:
     if not PERSISTENCE_OK:
         return False
     try:
-        from suite_workspace import init_suite_workspace
+        from suite_workspace import bootstrap_suite_workspace
 
-        init_suite_workspace(st)
+        bootstrap_suite_workspace(st)
     except Exception:
         pass
     try:
